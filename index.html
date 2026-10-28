@@ -1655,9 +1655,9 @@ function makeDial(svg, movable) {
       el('path', {class: 'bg', d: arcPath(R0, R1, a0, a1)}, g);
       const ga0 = a0 + 0.1, ga1 = a1 - 0.1, f = Math.min(1, Math.max(0, norm(P, pget(P.key))));
       // track + value as stroked arcs with round ends (same blue in both themes: the drawing is always light)
-      const rg = R1 - 9, arc = (b0, b1) => `M${(rg * Math.cos(b0)).toFixed(2)} ${(rg * Math.sin(b0)).toFixed(2)} A${rg} ${rg} 0 ${b1 - b0 > Math.PI ? 1 : 0} 1 ${(rg * Math.cos(b1)).toFixed(2)} ${(rg * Math.sin(b1)).toFixed(2)}`;
-      el('path', {d: arc(ga0, ga1), fill: 'none', stroke: 'rgba(138,71,8,.20)', 'stroke-width': 10, 'stroke-linecap': 'round'}, g);
-      el('path', {d: arc(ga0, ga0 + (ga1 - ga0) * Math.max(0.001, f)), fill: 'none', stroke: 'rgba(47,91,183,.62)', 'stroke-width': 10, 'stroke-linecap': 'round'}, g);
+      const rg = R1 - 11, arc = (b0, b1) => `M${(rg * Math.cos(b0)).toFixed(2)} ${(rg * Math.sin(b0)).toFixed(2)} A${rg} ${rg} 0 ${b1 - b0 > Math.PI ? 1 : 0} 1 ${(rg * Math.cos(b1)).toFixed(2)} ${(rg * Math.sin(b1)).toFixed(2)}`;
+      el('path', {d: arc(ga0, ga1), fill: 'none', stroke: 'rgba(138,71,8,.20)', 'stroke-width': 15, 'stroke-linecap': 'round'}, g);
+      el('path', {d: arc(ga0, ga0 + (ga1 - ga0) * Math.max(0.001, f)), fill: 'none', stroke: 'rgba(47,91,183,.62)', 'stroke-width': 15, 'stroke-linecap': 'round'}, g);
       // text follows the circle: upper slices read along the top arc, lower slices along a reversed arc so nothing is upside down
       const lower = Math.sin(am) > 0.05;
       const tArc = (r, id) => {
