@@ -1934,11 +1934,11 @@ function drawGizmos() {
   const g = selected, B = 'rgba(47,91,183,.62)', T = 'rgba(138,71,8,.20)';
   if (g) showLift(g.position.y);
   gXf.innerHTML = '';
-  el('circle', {cx: 0, cy: 0, r: 64, fill: 'var(--dial-bg)', stroke: 'var(--dial-bd)', 'stroke-width': 1}, gXf);
+  el('circle', {cx: 0, cy: 0, r: 64, fill: 'transparent', stroke: 'var(--dial-bd)', 'stroke-width': 1}, gXf);   // outline only, like the camera dial
   el('circle', {cx: 0, cy: 0, r: RING, fill: 'none', stroke: T, 'stroke-width': 8}, gXf);
   const pa = deg => [LR * Math.cos(THREE.MathUtils.degToRad(deg)), LR * Math.sin(THREE.MathUtils.degToRad(deg))];
   const arcL = (d0, d1) => { const [x0, y0] = pa(d0), [x1, y1] = pa(d1); return `M${x0.toFixed(2)} ${y0.toFixed(2)}A${LR} ${LR} 0 0 1 ${x1.toFixed(2)} ${y1.toFixed(2)}`; };
-  el('path', {d: arcL(LA0, LA1), fill: 'none', stroke: 'var(--dial-bg)', 'stroke-width': 22, 'stroke-linecap': 'round'}, gXf);
+  el('path', {d: arcL(LA0, LA1), fill: 'none', stroke: 'transparent', 'stroke-width': 22, 'stroke-linecap': 'round'}, gXf);
   el('path', {d: arcL(LA0, LA1), fill: 'none', stroke: T, 'stroke-width': 8, 'stroke-linecap': 'round'}, gXf);
   if (!g) return;
   const hf = Math.min(1, g.position.y / LIFT_MAX), ha = LA0 + (LA1 - LA0) * hf, [hx, hy] = pa(ha);
@@ -1946,7 +1946,7 @@ function drawGizmos() {
   el('circle', {cx: hx, cy: hy, r: 12.5, fill: '#2f5bb7', stroke: '#fff', 'stroke-width': 2}, gXf);
   el('text', {x: hx, y: hy + 3.3, 'text-anchor': 'middle', 'font-size': 9.5, 'font-weight': 700, fill: '#fff', style: 'font-family:var(--font);pointer-events:none'}, gXf).textContent = g.position.y.toFixed(1);
   const deg = ((THREE.MathUtils.radToDeg(g.rotation.y) % 360) + 360) % 360, a = THREE.MathUtils.degToRad(deg), sc = g.scale.x, r = rOf(sc);
-  el('circle', {cx: 0, cy: 0, r, fill: 'rgba(47,91,183,.10)', stroke: B, 'stroke-width': 1.4}, gXf);
+  el('circle', {cx: 0, cy: 0, r, fill: 'transparent', stroke: B, 'stroke-width': 1.4}, gXf);
   const fp = footprint(g), cx = g.position.x, cz = g.position.z;
   const R = Math.max(...fp.map(p => Math.hypot(p.x - cx, p.z - cz))) || 1, k = r * 0.78 / R;
   // footprint with rounded corners
