@@ -2116,7 +2116,7 @@ $('bImport2').onclick = () => fileIn.click();
 // right-drag on the drawing walks / orbits: never show the browser's context menu there
 glc.addEventListener('contextmenu', e => e.preventDefault());
 // height (up only): an arc hugging the left side of the form dial (0 m at the bottom, LIFT_MAX at the top)
-const LIFT_MAX = 12, LA0 = 125, LA1 = 235, LR = 80;   // arc angles in degrees (SVG: 0 = right, 90 = down)
+const LIFT_MAX = 12, LA0 = 140, LA1 = 220, LR = 80;   // kept within the dial's height   // arc angles in degrees (SVG: 0 = right, 90 = down)
 function showLift(y) { $('oLift').textContent = y.toFixed(1) + ' m'; }
 function setLift(y) { if (!selected) return; selected.position.y = Math.max(0, Math.min(LIFT_MAX, Math.round(y * 20) / 20)); showLift(selected.position.y); dirty = true; }
 $('xfHide').addEventListener('click', () => { $('cXf').checked = false; $('xfFloat').hidden = true; });
