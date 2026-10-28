@@ -1716,6 +1716,9 @@ function placeFloat(x, y, fromPointer) {
   if (fromPointer) { x -= r.left; y -= r.top; }
   x = Math.min(r.width - w - m, Math.max(m, x)); y = Math.min(r.height - w - m, Math.max(m, y));
   pieFloat.style.left = x + 'px'; pieFloat.style.top = y + 'px';
+  // keep the form dial (top-left) on the same centre line as the camera dial
+  const xf = $('xfFloat'), gs = $('gXf').getBoundingClientRect().height || 207;
+  xf.style.top = (y + w / 2 - gs / 2) + 'px';
   floatPos = {fx: (x - m) / Math.max(1, r.width - w - 2 * m), fy: (y - m) / Math.max(1, r.height - w - 2 * m)};
 }
 function saveFloat() { try { localStorage.setItem('shadowlab.dial', JSON.stringify(floatPos)); } catch (e) {} }
