@@ -1242,8 +1242,10 @@ function drawPlan() {
     const dx = 2 * cx - sx, dz = 2 * cz - sz;
     const del = el('g', {'data-role': 'del', style: 'cursor:pointer'});
     el('title', {}, del).textContent = 'Remove this form (Delete key)';
-    el('circle', {cx: dx, cy: dz, r: .66, fill: '#d93025', stroke: 'var(--md-surface)', 'stroke-width': .12, 'data-role': 'del'}, del);
-    el('path', {d: `M${dx - .27} ${dz - .27}L${dx + .27} ${dz + .27}M${dx + .27} ${dz - .27}L${dx - .27} ${dz + .27}`, stroke: '#fff', 'stroke-width': .16, 'stroke-linecap': 'round', 'data-role': 'del'}, del);
+    const xp = `M${dx - .42} ${dz - .42}L${dx + .42} ${dz + .42}M${dx + .42} ${dz - .42}L${dx - .42} ${dz + .42}`;
+    el('circle', {cx: dx, cy: dz, r: .75, fill: 'transparent', 'data-role': 'del'}, del);   // larger invisible hit area
+    el('path', {d: xp, stroke: 'var(--md-surface-c)', 'stroke-width': .42, 'stroke-linecap': 'round', 'data-role': 'del'}, del);   // thin halo so it reads over lines
+    el('path', {d: xp, stroke: '#d93025', 'stroke-width': .22, 'stroke-linecap': 'round', 'data-role': 'del'}, del);
   }
   // light
   let lx, lz;
