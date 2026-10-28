@@ -1487,7 +1487,7 @@ function dragVP(v, mx) {
 glc.addEventListener('mousedown', e => { if (e.button === 1 && S.view !== 'free') e.preventDefault(); });  // no autoscroll
 glc.addEventListener('pointerdown', e => {
   // Shift + middle-drag: tilt (3-pt) or raise / lower the horizon (1- and 2-pt)
-  if (e.button === 1 && e.shiftKey && S.view !== 'free' && !placing) {
+  if (e.button === 1 && S.view !== 'free' && !placing) {   // Shift can be pressed before or after the middle button
     e.preventDefault(); drag = {kind: 'tiltmm', y: e.clientY}; glc.setPointerCapture(e.pointerId); return;
   }
   if (placing) {
@@ -1530,6 +1530,7 @@ glc.addEventListener('pointermove', e => {
   if (drag.kind === 'hl') { S.shift = Math.max(-0.45, Math.min(0.45, stageXY(e).y / ov.clientHeight - 0.5)); syncSliders(); dirty = true; return; }
   if (drag.kind === 'tiltmm') {
     const dy = e.clientY - drag.y; drag.y = e.clientY;
+    if (!e.shiftKey) return;
     if (S.view === '3pt') { S.tilt = Math.max(-85, Math.min(85, S.tilt - dy * 0.25)); if (Math.abs(S.tilt) < 1) S.tilt = dy > 0 ? -1 : 1; aimAtForms(); }
     else S.shift = Math.max(-0.45, Math.min(0.45, S.shift + dy / ov.clientHeight));
     syncSliders(); dirty = true; return;
