@@ -84,6 +84,7 @@ body{margin:0;background:var(--md-surface);color:var(--md-on-surface);font:400 1
 .gd{display:inline-flex;align-items:center;gap:5px;font:500 12px/16px var(--font);background:#ffffffee;color:#44464f;border:1px solid #c5c6d0;border-radius:var(--r-s);padding:6px 10px;cursor:help}
 .gd svg{width:16px;height:16px;color:#44464f;flex:none}
 .badge{font:500 12px/16px var(--font);background:#dae2ff;color:#001946;border-radius:var(--r-s);padding:6px 10px}
+.badge.place{background:#ffe2c4;color:#5a2d00}
 .badge.alt{background:#ffffffee;color:#44464f;border:1px solid #c5c6d0}
 .hint{position:absolute;right:12px;bottom:12px;font-size:12px;color:#44464f;background:#ffffffe6;padding:6px 10px;border-radius:var(--r-s);pointer-events:none;max-width:60%}
 .drop{position:absolute;inset:0;display:grid;place-items:center;background:rgba(47,91,183,.12);border:3px dashed #2f5bb7;border-radius:var(--r-l);color:#001946;font:500 18px var(--font);pointer-events:none}
@@ -924,11 +925,40 @@ function enhanceSelect(sel) {
 }
 function showWinFields() { $('winFields').hidden = !(selForm.value === 'windows' || (selected && selected.userData.type === 'windows')); }
 selForm.addEventListener('change', showWinFields);
-$('bAdd').onclick = () => {
+// placing mode: Add puts a live preview of the form on the grid; hover snaps it to the nearest grid point
+// (highlighted), click drops it there, Esc or Add again cancels
+let placing = null;
+const snapMark = new THREE.Group(); snapMark.visible = false; scene.add(snapMark);
+{
+  const ringM = new THREE.MeshBasicMaterial({color: 0xe07400, transparent: true, opacity: .9, depthTest: false});
+  const ring = new THREE.Mesh(new THREE.RingGeometry(0.26, 0.38, 40), ringM); ring.rotation.x = -Math.PI / 2; ring.renderOrder = 10; snapMark.add(ring);
+  const dot = new THREE.Mesh(new THREE.CircleGeometry(0.1, 20), ringM); dot.rotation.x = -Math.PI / 2; dot.renderOrder = 10; snapMark.add(dot);
+  const lm = new THREE.LineBasicMaterial({color: 0xe07400, transparent: true, opacity: .75, depthTest: false});
+  const cross = new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints([new V3(-1.5, 0, 0), new V3(1.5, 0, 0), new V3(0, 0, -1.5), new V3(0, 0, 1.5)]), lm);
+  cross.renderOrder = 10; snapMark.add(cross); snapMark.position.y = 0.004;
+}
+function startPlacing() {
   const k = selForm.value, t = viewTarget();
-  const r = LIB[k].group === 'furniture' ? 1.2 : 3;
-  addForm(k, t.x + (Math.random() - 0.5) * r, t.z + (Math.random() - 0.5) * r); if (forms.length === 1) fitView(); dirty = true; drawPlan();
-};
+  const g = addForm(k, Math.round(t.x), Math.round(t.z));
+  placing = {g, gridWas: grid.visible};
+  grid.visible = true; snapMark.visible = true; snapMark.position.set(g.position.x, 0.004, g.position.z);
+  select(g); glc.style.cursor = 'crosshair';
+  $('bAdd').innerHTML = '<span class="msi" aria-hidden="true">close</span>Cancel';
+  dirty = true; drawPlan();
+}
+function endPlacing(keep) {
+  if (!placing) return;
+  const g = placing.g; grid.visible = placing.gridWas || $('cGrid').checked; snapMark.visible = false; placing = null;
+  if (!keep) removeForm(g); else { select(g); if (forms.length === 1) fitView(); }
+  glc.style.cursor = ''; $('bAdd').innerHTML = '<span class="msi" aria-hidden="true">add</span>Add';
+  dirty = true; drawPlan();
+}
+function movePlacing(e) {
+  setNdc(e); const p = hitPlane(0); if (!p) return;
+  const x = Math.round(p.x), z = Math.round(p.z);
+  placing.g.position.set(x, 0, z); snapMark.position.set(x, 0.004, z); snapMark.visible = true; dirty = true;
+}
+$('bAdd').onclick = () => placing ? endPlacing(false) : startPlacing();
 
 // ---------------------------------------------------------------- state
 const S = {
@@ -1224,7 +1254,8 @@ function explain(d, f, Lp, Fp) {
        S.view === 'free' ? 'orbit' : 'walk', S.view === 'free' ? 'Drag empty space to orbit' : 'Drag empty space to walk around the forms'),
     ic('<rect x="5.5" y="2" width="9" height="16" rx="4.5" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M10 5v4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>', 'zoom', 'Scroll or pinch to zoom'),
   ].join('') + '</span>';
-  $('readout').innerHTML = chips.join('') + guide;
+  const placeChip = placing ? '<span class="badge place">Click a grid point to drop the form · Esc to cancel</span>' : '';
+  $('readout').innerHTML = chips.join('') + placeChip + guide;
 }
 
 // ---------------------------------------------------------------- plan view (SVG)
@@ -1389,6 +1420,7 @@ function dragVP(v, mx) {
   syncSliders();
 }
 glc.addEventListener('pointerdown', e => {
+  if (placing) { if (e.button === 0) { movePlacing(e); endPlacing(true); } else endPlacing(false); e.preventDefault(); return; }
   setNdc(e);
   const gh = guideHit(stageXY(e));
   if (gh) {
@@ -1412,6 +1444,7 @@ glc.addEventListener('pointerdown', e => {
   if (drag) { glc.setPointerCapture(e.pointerId); controls.enabled = false; }
 });
 glc.addEventListener('pointermove', e => {
+  if (placing) { movePlacing(e); return; }
   if (!drag) {
     const gh = guideHit(stageXY(e));
     glc.style.cursor = !gh ? '' : gh.kind === 'vp' ? 'ew-resize' : 'ns-resize';
@@ -1719,6 +1752,7 @@ function deleteSelected() {
 $('bDel').onclick = deleteSelected;
 // Delete / Backspace removes the selected form (not while typing in a field)
 document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && placing) { endPlacing(false); return; }
   if ((e.key === 'Delete' || e.key === 'Backspace') && selected && !/^(INPUT|SELECT|TEXTAREA)$/.test(document.activeElement.tagName)) { e.preventDefault(); deleteSelected(); }
 });
 $('bClear').onclick = () => { [...forms].forEach(removeForm); dirty = true; };
@@ -1846,7 +1880,7 @@ gXf.addEventListener('keydown', e => {
   if (e.key === 'ArrowDown' || e.key === '-') { e.preventDefault(); setScale(v / 1.05); }
 });
 for (const [id, key] of Object.entries(checks)) $(id).addEventListener('change', e => { S[key] = e.target.checked; dirty = true; });
-$('cGrid').addEventListener('change', e => { grid.visible = e.target.checked; dirty = true; });
+$('cGrid').addEventListener('change', e => { grid.visible = e.target.checked || !!placing; dirty = true; });
 
 // ---------------------------------------------------------------- 3D model import
 function snack(msg) { const s = $('snack'); s.textContent = msg; s.hidden = false; clearTimeout(snack.t); snack.t = setTimeout(() => s.hidden = true, 4200); }
