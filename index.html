@@ -96,6 +96,8 @@ body{margin:0;background:var(--md-surface);color:var(--md-on-surface);font:400 1
 .field select{font:400 14px var(--font);height:40px;border-radius:4px;border:1px solid var(--md-outline);background:transparent;color:var(--md-on-surface);padding:0 10px}
 .field select option{background:var(--md-surface);color:var(--md-on-surface)}
 .sub{font:500 12px var(--font);letter-spacing:.06em;text-transform:uppercase;color:var(--p-forms-ink)}
+.addrow{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:end}
+.selbox{display:grid;gap:10px;padding:12px;border-radius:var(--r-s);background:color-mix(in srgb,var(--md-surface) 70%,transparent)}
 .fields{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr);gap:10px}
 /* segmented buttons */
 .seg{display:flex;border:1px solid var(--md-outline);border-radius:20px;overflow:hidden;height:40px}
@@ -184,48 +186,44 @@ label.chip:has(input:focus-visible){outline:3px solid var(--md-primary);outline-
       <label class="sl" for="sTilt" id="lbTilt" hidden>Camera tilt<input id="sTilt" type="range" min="-80" max="80" step="1" value="25"><output id="oTilt"></output></label>
       <label class="sl" for="sShift">Horizon in frame<input id="sShift" type="range" min="-0.45" max="0.45" step="0.01" value="0.12"><output id="oShift"></output></label>
       <div class="row"><button class="btn tonal" id="bFit"><span class="msi" aria-hidden="true">fit_screen</span>Fit view to forms</button></div>
-      <p class="note">1- and 2-point keep the camera level, so verticals stay vertical. In 2-point, drag VPL or VPR along the horizon: spreading them apart gives a longer lens, pulling one toward the centre turns the view. Drag the horizon line up or down to move it in the frame. 3-point tilts the camera so verticals meet at VP3; drag VP3 or use Camera tilt.</p>
+      
     </section>
 
     <section class="card c-light" aria-labelledby="h-light">
-      <h2 id="h-light"><span class="msi" aria-hidden="true">light_mode</span>Light</h2>
+      <h2 id="h-light"><span class="msi" aria-hidden="true">light_mode</span>Light &amp; plan</h2>
       <div class="seg" role="group" aria-label="Light type">
         <button id="lSun" aria-pressed="true"><span class="msi chk">check</span>Sun</button>
         <button id="lPoint" aria-pressed="false"><span class="msi chk">check</span>Point light</button>
       </div>
-      <svg id="plan" viewBox="-13 -13 26 26" aria-label="Plan view: drag the light"></svg>
-      <p class="note">Plan view from above. Drag the light. The dashed line through the forms splits the ground into the viewer's side (light in front) and the far side (light behind).</p>
+      <svg id="plan" viewBox="-13 -13 26 26" aria-label="Plan view: drag the light, drag forms to move them, use the handles to rotate and scale"></svg>
       <label class="sl" for="sElev" id="lbElev">Sun altitude<input id="sElev" type="range" min="5" max="85" step="1" value="35"><output id="oElev"></output></label>
       <label class="sl" for="sLH" id="lbLH" hidden>Light height<input id="sLH" type="range" min="0.5" max="14" step="0.1" value="7"><output id="oLH"></output></label>
-      <div class="chips">
-        <button class="chip" id="pFront"><span class="msi" aria-hidden="true">south</span>In front</button>
-        <button class="chip" id="pBack"><span class="msi" aria-hidden="true">north</span>Behind</button>
-        <button class="chip" id="pSide"><span class="msi" aria-hidden="true">west</span>From the side</button>
-      </div>
     </section>
 
     <section class="card c-forms" aria-labelledby="h-forms">
       <h2 id="h-forms"><span class="msi" aria-hidden="true">apartment</span>Forms</h2>
-      <div class="chips" id="lib"></div>
-      <div class="sub">Furniture</div>
-      <div class="chips" id="libFurn"></div>
-      <div class="fields">
+      <div class="addrow">
+        <label class="field" for="selForm">Add a form<select id="selForm"></select></label>
+        <button class="btn filled" id="bAdd"><span class="msi" aria-hidden="true">add</span>Add</button>
+      </div>
+      <div class="fields" id="winFields" hidden>
         <label class="field" for="selWin">Window style<select id="selWin"></select></label>
-        <label class="field" for="selWinN">Windows per wall<select id="selWinN"><option>1</option><option>2</option><option selected>3</option><option>4</option></select></label>
+        <label class="field" for="selWinN">How many<select id="selWinN"><option>1</option><option>2</option><option selected>3</option><option>4</option></select></label>
       </div>
       <div class="row">
-        <button class="btn tonal" id="bImport2"><span class="msi" aria-hidden="true">view_in_ar</span>Import 3D model</button>
+        <button class="btn tonal" id="bImport2" title="GLB, glTF, OBJ or STL. You can also drop a file on the drawing."><span class="msi" aria-hidden="true">view_in_ar</span>Import 3D model</button>
+        <label class="chip"><input type="checkbox" id="cClay" checked><span class="msi on">check</span><span class="msi off">palette</span>Clay look</label>
       </div>
-      <label class="chip" style="justify-self:start"><input type="checkbox" id="cClay" checked><span class="msi on">check</span><span class="msi off">palette</span>Clay material for imports</label>
-      <p class="note">GLB, glTF (select the .gltf with its .bin and textures), OBJ or STL. You can also drop a file on the drawing. Shadow construction for a model uses its bounding box.</p>
+      <div class="selbox" id="selBox" hidden>
       <div class="sel" id="selName">No form selected</div>
-      <label class="sl" for="sRot">Rotate<input id="sRot" type="range" min="0" max="180" step="1" value="0"><output id="oRot"></output></label>
+      <label class="sl" for="sRot">Rotate<input id="sRot" type="range" min="0" max="359" step="1" value="0"><output id="oRot"></output></label>
       <label class="sl" for="sScale">Size<input id="sScale" type="range" min="0.2" max="3" step="0.05" value="1"><output id="oScale"></output></label>
       <div class="row">
         <button class="btn outlined" id="bUp" hidden><span class="msi" aria-hidden="true">screen_rotation_alt</span>Stand upright</button>
         <button class="btn danger" id="bDel"><span class="msi" aria-hidden="true">delete</span>Remove</button>
-        <button class="btn" id="bClear"><span class="msi" aria-hidden="true">clear_all</span>Clear all</button>
       </div>
+      </div>
+      <div class="row"><button class="btn" id="bClear"><span class="msi" aria-hidden="true">clear_all</span>Clear all</button></div>
     </section>
 
     <section class="card c-lines" aria-labelledby="h-ov">
@@ -704,25 +702,35 @@ function removeForm(g) { scene.remove(g); forms = forms.filter(f => f !== g); if
 function select(g) {
   selected = g;
   $('selName').textContent = g ? `Selected: ${g.userData.label || LIB[g.userData.type].label}` : 'No form selected';
-  const deg = g ? Math.round(((THREE.MathUtils.radToDeg(g.rotation.y) % 180) + 180) % 180) : 0;
+  const deg = g ? Math.round(((THREE.MathUtils.radToDeg(g.rotation.y) % 360) + 360) % 360) : 0;
   $('sRot').value = deg; $('oRot').textContent = deg + '°'; $('sRot').disabled = !g;
   const sc = g ? g.scale.x : 1;
   $('sScale').value = sc; $('oScale').textContent = '×' + sc.toFixed(2); $('sScale').disabled = !g;
   $('bUp').hidden = !(g && g.userData.type === 'model');
   if (g && g.userData.type === 'windows') { $('selWin').value = g.userData.winStyle; $('selWinN').value = g.userData.winN; }
+  $('selBox').hidden = !g;
+  showWinFields();
   dirty = true;
 }
-const lib = $('lib');
-for (const [k, v] of Object.entries(LIB)) {
-  const b = document.createElement('button'); b.className = 'chip'; b.id = 'add-' + k;
-  b.innerHTML = '<span class="msi" aria-hidden="true">add</span>'; b.append(v.label);
-  b.onclick = () => {
-    const t = viewTarget();
-    const r = v.group === 'furniture' ? 1.2 : 3;
-    addForm(k, t.x + (Math.random() - 0.5) * r, t.z + (Math.random() - 0.5) * r); if (forms.length === 1) fitView(); dirty = true; drawPlan();
-  };
-  (v.group === 'furniture' ? $('libFurn') : lib).appendChild(b);
+const CATS = [
+  ['Architecture', ['cube', 'tower', 'lshape', 'gable', 'hip', 'column', 'arch', 'stairs', 'canopy']],
+  ['Curved solids', ['sphere', 'cylinder']],
+  ['Windows', ['windows', 'bay']],
+  ['Furniture', ['chair', 'armchair', 'ladder', 'stool', 'bench', 'dining', 'roundtable', 'desk', 'trestle', 'coffee']],
+];
+const selForm = $('selForm');
+for (const [cat, keys] of CATS) {
+  const og = document.createElement('optgroup'); og.label = cat;
+  for (const k of keys) { const o = document.createElement('option'); o.value = k; o.textContent = LIB[k].label; og.appendChild(o); }
+  selForm.appendChild(og);
 }
+function showWinFields() { $('winFields').hidden = !(selForm.value === 'windows' || (selected && selected.userData.type === 'windows')); }
+selForm.addEventListener('change', showWinFields);
+$('bAdd').onclick = () => {
+  const k = selForm.value, t = viewTarget();
+  const r = LIB[k].group === 'furniture' ? 1.2 : 3;
+  addForm(k, t.x + (Math.random() - 0.5) * r, t.z + (Math.random() - 0.5) * r); if (forms.length === 1) fitView(); dirty = true; drawPlan();
+};
 
 // ---------------------------------------------------------------- state
 const S = {
@@ -1009,53 +1017,119 @@ function explain(d, f, Lp, Fp) {
 }
 
 // ---------------------------------------------------------------- plan view (SVG)
+// A top view of the scene: drag the light, drag forms to move them, and use the handles on the selected
+// form to rotate and scale it. The labels around the ring snap the light in front, behind or to a side.
 const plan = $('plan'), NS = 'http://www.w3.org/2000/svg';
 function el(n, a, p = plan) { const e = document.createElementNS(NS, n); for (const k in a) e.setAttribute(k, a[k]); p.appendChild(e); return e; }
+const PV = {c: new V3(), k: 1};   // plan transform: plan = (world - c) * k
+const mono = 'DM Mono, Roboto Mono, monospace';
+function footprint(g) { return hull(g.userData.keys.map(k => g.localToWorld(k.clone())).map(p => ({x: p.x, z: p.z}))); }
+function planView() {
+  if (!planDrag) {   // freeze the transform while dragging so things don't slide under the pointer
+    PV.c.copy(target);
+    let R = 4;
+    for (const g of forms) for (const p of footprint(g)) R = Math.max(R, Math.hypot(p.x - PV.c.x, p.z - PV.c.z));
+    if (S.light === 'point') R = Math.max(R, Math.hypot(S.pPos.x - PV.c.x, S.pPos.z - PV.c.z) * 0.9);
+    PV.k = 9.2 / (R * 1.15);
+  }
+}
+const toP = (x, z) => [(x - PV.c.x) * PV.k, (z - PV.c.z) * PV.k];
 function drawPlan() {
+  planView();
   plan.innerHTML = '';
-  const c = target;
-  const mx = x => x - c.x, mz = z => z - c.z;
   el('circle', {cx: 0, cy: 0, r: 11, fill: 'none', stroke: 'var(--md-outline-variant)', 'stroke-width': .06});
-  // viewer + sight line
-  const vd = S.view === 'free' ? camera.position.clone().sub(c).setY(0).normalize() : viewerDir();
-  const vp = vd.clone().multiplyScalar(10.5);
-  const perp = new V3(vd.z, 0, -vd.x).multiplyScalar(12);
-  el('line', {x1: perp.x, y1: perp.z, x2: -perp.x, y2: -perp.z, stroke: 'var(--md-on-surface-variant)', 'stroke-width': .07, 'stroke-dasharray': '.4 .3'});
-  el('text', {x: vd.x * 5 + perp.x * .02, y: vd.z * 5, 'font-size': 1, fill: 'var(--md-on-surface-variant)', 'text-anchor': 'middle', 'font-family': 'DM Mono, monospace'}).textContent = 'front';
-  el('text', {x: -vd.x * 5, y: -vd.z * 5, 'font-size': 1, fill: 'var(--md-on-surface-variant)', 'text-anchor': 'middle', 'font-family': 'DM Mono, monospace'}).textContent = 'behind';
-  const cone = new V3(vd.z, 0, -vd.x).multiplyScalar(3.2);
-  el('path', {d: `M${vp.x} ${vp.z} L${-cone.x + vp.x * .35} ${-cone.z + vp.z * .35} M${vp.x} ${vp.z} L${cone.x + vp.x * .35} ${cone.z + vp.z * .35}`, stroke: 'var(--md-primary)', 'stroke-width': .08, fill: 'none'});
-  el('circle', {cx: vp.x, cy: vp.z, r: .45, fill: 'var(--md-primary)'});
-  el('text', {x: vp.x, y: vp.z + 1.5, 'font-size': .95, fill: 'var(--md-primary)', 'text-anchor': 'middle', 'font-family': 'DM Mono, monospace'}).textContent = 'viewer';
-  // forms footprints (from keys)
-  for (const g of forms) {
-    const pts = g.userData.keys.map(k => g.localToWorld(k.clone()));
-    const hv = hull(pts.map(p => ({x: p.x, z: p.z})));
-    el('polygon', {points: hv.map(p => `${mx(p.x)},${mz(p.z)}`).join(' '), fill: g === selected ? 'var(--md-primary-container)' : 'var(--md-surface-low)', stroke: 'var(--md-on-surface)', 'stroke-width': .08});
+  const vd = S.view === 'free' ? camera.position.clone().sub(PV.c).setY(0).normalize() : viewerDir();
+  const rt = new V3(vd.z, 0, -vd.x);
+  // front / behind divider (the picture-plane direction through the forms)
+  el('line', {x1: rt.x * 11, y1: rt.z * 11, x2: -rt.x * 11, y2: -rt.z * 11, stroke: 'var(--md-on-surface-variant)', 'stroke-width': .06, 'stroke-dasharray': '.4 .3'});
+  // viewer (direction only, not to scale)
+  const vp = vd.clone().multiplyScalar(11.6), cone = rt.clone().multiplyScalar(2.6);
+  el('path', {d: `M${vp.x} ${vp.z} L${vp.x * .62 - cone.x} ${vp.z * .62 - cone.z} M${vp.x} ${vp.z} L${vp.x * .62 + cone.x} ${vp.z * .62 + cone.z}`, stroke: 'var(--md-primary)', 'stroke-width': .08, fill: 'none'});
+  el('circle', {cx: vp.x, cy: vp.z, r: .5, fill: 'var(--md-primary)'});
+  // scale bar
+  const nice = [0.5, 1, 2, 5, 10, 20, 50].find(m => m * PV.k > 2.2) || 50;
+  el('line', {x1: -12.2, y1: 12.2, x2: -12.2 + nice * PV.k, y2: 12.2, stroke: 'var(--md-on-surface-variant)', 'stroke-width': .12});
+  el('text', {x: -12.2, y: 11.6, 'font-size': .8, fill: 'var(--md-on-surface-variant)', 'font-family': mono}).textContent = nice + ' m';
+  // light presets as labels on the ring
+  const yAx = new V3(0, 1, 0);
+  const zones = [['front', vd.clone().applyAxisAngle(yAx, 0.5), 'in front'], ['back', vd.clone().negate(), 'behind'], ['left', rt.clone().negate(), 'left'], ['right', rt, 'right']];
+  for (const [kind, d, txt] of zones) {   // sit on the ring, outside the area the forms use
+    const x = d.x * 11, y = d.z * 11, w = txt.length * 0.62 + 0.9;
+    const g = el('g', {'data-role': 'zone', 'data-kind': kind, style: 'cursor:pointer'});
+    el('rect', {x: x - w / 2, y: y - 0.75, width: w, height: 1.4, rx: .7, fill: 'var(--md-surface-low)', stroke: 'var(--md-outline-variant)', 'stroke-width': .05, 'data-role': 'zone', 'data-kind': kind}, g);
+    el('text', {x, y: y + 0.32, 'font-size': .85, fill: 'var(--md-on-surface-variant)', 'text-anchor': 'middle', 'font-family': mono, 'data-role': 'zone', 'data-kind': kind}, g).textContent = txt;
+  }
+  // forms
+  forms.forEach((g, i) => {
+    const pts = footprint(g).map(p => toP(p.x, p.z));
+    el('polygon', {points: pts.map(p => p.join(',')).join(' '), fill: g === selected ? 'var(--md-primary-container)' : 'var(--md-surface-low)', stroke: g === selected ? 'var(--md-primary)' : 'var(--md-on-surface)', 'stroke-width': g === selected ? .12 : .07, 'data-role': 'form', 'data-i': i, style: 'cursor:move'});
+  });
+  if (selected) {
+    const [cx, cz] = toP(selected.position.x, selected.position.z);
+    const rr = Math.max(...footprint(selected).map(p => Math.hypot(p.x - selected.position.x, p.z - selected.position.z))) * PV.k + 0.9;
+    const a = selected.rotation.y, rx = Math.sin(a), rz = Math.cos(a);
+    const hx = cx + rx * rr, hz = cz + rz * rr;                       // rotate handle on the form's front axis
+    el('line', {x1: cx, y1: cz, x2: hx, y2: hz, stroke: 'var(--md-primary)', 'stroke-width': .06, 'stroke-dasharray': '.25 .2'});
+    el('circle', {cx: hx, cy: hz, r: .62, fill: 'var(--md-surface)', stroke: 'var(--md-primary)', 'stroke-width': .12, 'data-role': 'rot', style: 'cursor:grab'});
+    el('path', {d: `M${hx - .3} ${hz} A .3 .3 0 1 1 ${hx} ${hz + .3}`, stroke: 'var(--md-primary)', 'stroke-width': .09, fill: 'none', 'pointer-events': 'none'});
+    const sx = cx + Math.cos(a) * rr * .72 + rx * rr * .72, sz = cz - Math.sin(a) * rr * .72 + rz * rr * .72;   // scale handle on the diagonal
+    el('rect', {x: sx - .5, y: sz - .5, width: 1, height: 1, rx: .15, fill: 'var(--md-surface)', stroke: 'var(--md-primary)', 'stroke-width': .12, 'data-role': 'scale', style: 'cursor:nwse-resize'});
   }
   // light
   let lx, lz;
   if (S.light === 'sun') {
-    const u = sunDirToLight().setY(0).normalize(); lx = u.x * 10; lz = u.z * 10;
+    const u = sunDirToLight().setY(0).normalize(); lx = u.x * 10.4; lz = u.z * 10.4;
     el('line', {x1: lx, y1: lz, x2: 0, y2: 0, stroke: 'var(--ray)', 'stroke-width': .1, 'stroke-dasharray': '.5 .3'});
   } else {
-    lx = mx(S.pPos.x); lz = mz(S.pPos.z);
+    [lx, lz] = toP(S.pPos.x, S.pPos.z);
+    const m = Math.hypot(lx, lz); if (m > 12) { lx *= 12 / m; lz *= 12 / m; }
   }
-  const h = el('circle', {cx: lx, cy: lz, r: .85, fill: 'var(--ray)', stroke: 'var(--md-on-surface)', 'stroke-width': .08, style: 'cursor:grab'});
-  el('text', {x: lx, y: lz - 1.3, 'font-size': 1, fill: 'var(--ray)', 'text-anchor': 'middle', 'font-family': 'DM Mono, monospace'}).textContent = S.light === 'sun' ? 'sun' : 'L';
+  el('circle', {cx: lx, cy: lz, r: .85, fill: 'var(--ray)', stroke: 'var(--md-on-surface)', 'stroke-width': .08, 'data-role': 'light', style: 'cursor:grab'});
+  el('text', {x: lx, y: lz - 1.25, 'font-size': .95, fill: 'var(--ray)', 'text-anchor': 'middle', 'font-family': mono, 'pointer-events': 'none'}).textContent = S.light === 'sun' ? 'sun' : 'L';
 }
 function planPoint(ev) {
   const r = plan.getBoundingClientRect();
-  return {x: (ev.clientX - r.left) / r.width * 26 - 13, z: (ev.clientY - r.top) / r.height * 26 - 13};
+  const px = (ev.clientX - r.left) / r.width * 26 - 13, pz = (ev.clientY - r.top) / r.height * 26 - 13;
+  return {px, pz, x: PV.c.x + px / PV.k, z: PV.c.z + pz / PV.k};
 }
-let planDrag = false;
-plan.addEventListener('pointerdown', e => { planDrag = true; plan.setPointerCapture(e.pointerId); planMove(e); });
-plan.addEventListener('pointermove', e => planDrag && planMove(e));
-plan.addEventListener('pointerup', () => planDrag = false);
-function planMove(e) {
+let planDrag = null;
+plan.addEventListener('pointerdown', e => {
+  const role = e.target.getAttribute && e.target.getAttribute('data-role');
   const p = planPoint(e);
-  if (S.light === 'sun') { S.sunAz = THREE.MathUtils.radToDeg(Math.atan2(p.x, p.z)); }
-  else { S.pPos.set(target.x + p.x, S.pPos.y, target.z + p.z); }
+  if (role === 'zone') { placeRel(e.target.getAttribute('data-kind')); return; }
+  if (role === 'form') {
+    const g = forms[+e.target.getAttribute('data-i')]; select(g);
+    planDrag = {kind: 'form', g, dx: g.position.x - p.x, dz: g.position.z - p.z};
+  } else if (role === 'rot' && selected) {
+    planDrag = {kind: 'rot', g: selected};
+  } else if (role === 'scale' && selected) {
+    planDrag = {kind: 'scale', g: selected, s0: selected.scale.x, d0: Math.max(0.05, Math.hypot(p.x - selected.position.x, p.z - selected.position.z))};
+  } else {
+    planDrag = {kind: 'light'}; planMove(e);
+  }
+  plan.setPointerCapture(e.pointerId);
+});
+plan.addEventListener('pointermove', e => planDrag && planMove(e));
+plan.addEventListener('pointerup', () => {
+  if (planDrag && planDrag.kind === 'form' && S.view !== 'free') target = viewTarget();
+  planDrag = null; dirty = true;
+});
+function planMove(e) {
+  const p = planPoint(e), d = planDrag;
+  if (d.kind === 'light') {
+    if (S.light === 'sun') S.sunAz = THREE.MathUtils.radToDeg(Math.atan2(p.px, p.pz));
+    else S.pPos.set(p.x, S.pPos.y, p.z);
+  } else if (d.kind === 'form') {
+    d.g.position.set(p.x + d.dx, 0, p.z + d.dz);
+  } else if (d.kind === 'rot') {
+    let deg = THREE.MathUtils.radToDeg(Math.atan2(p.x - d.g.position.x, p.z - d.g.position.z));
+    if (!e.shiftKey) deg = Math.round(deg / 5) * 5;   // 5° steps; hold Shift for free rotation
+    d.g.rotation.y = THREE.MathUtils.degToRad(deg);
+    const show = ((Math.round(deg) % 360) + 360) % 360; $('sRot').value = show; $('oRot').textContent = show + '°';
+  } else if (d.kind === 'scale') {
+    const v = Math.min(5, Math.max(0.1, d.s0 * Math.hypot(p.x - d.g.position.x, p.z - d.g.position.z) / d.d0));
+    d.g.scale.setScalar(v); $('sScale').value = v; $('oScale').textContent = '×' + v.toFixed(2);
+  }
   dirty = true;
 }
 
@@ -1241,15 +1315,13 @@ function placeRel(kind) { // presets relative to the current viewer
   let dir;
   if (kind === 'front') dir = vd.clone().multiplyScalar(0.8).addScaledVector(right, -0.6);
   if (kind === 'back') dir = vd.clone().multiplyScalar(-0.85).addScaledVector(right, 0.5);
-  if (kind === 'side') dir = right.clone().multiplyScalar(-1);
+  if (kind === 'side' || kind === 'left') dir = right.clone().multiplyScalar(-1);
+  if (kind === 'right') dir = right.clone();
   dir.normalize();
   if (S.light === 'sun') { S.sunAz = THREE.MathUtils.radToDeg(Math.atan2(dir.x, dir.z)); }
-  else { const r = kind === 'side' ? 7 : 6; S.pPos.set(target.x + dir.x * r, S.pPos.y, target.z + dir.z * r); }
+  else { const r = (kind === 'left' || kind === 'right') ? 7 : 6; S.pPos.set(target.x + dir.x * r, S.pPos.y, target.z + dir.z * r); }
   dirty = true;
 }
-$('pFront').onclick = () => placeRel('front');
-$('pBack').onclick = () => placeRel('back');
-$('pSide').onclick = () => placeRel('side');
 
 $('bDel').onclick = () => { if (selected) removeForm(selected); dirty = true; };
 $('bClear').onclick = () => { [...forms].forEach(removeForm); dirty = true; };
