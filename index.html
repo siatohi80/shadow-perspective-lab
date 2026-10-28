@@ -287,14 +287,17 @@ shadowLayer.rotation.x = -Math.PI / 2; shadowLayer.position.y = 0.001; shadowLay
 const grid = new THREE.GridHelper(60, 60, 0xb9b3a8, 0xd4cfc6); grid.position.y = 0.002; grid.visible = false; scene.add(grid);
 
 const WHITE = new THREE.MeshLambertMaterial({color: 0xf6f6f2});
-const GLASS = new THREE.MeshLambertMaterial({color: 0x8d99a6, side: THREE.DoubleSide});
+// glass lets light through: see-through, and never casts a shadow (only frames, rails and muntins do)
+const GLASS = new THREE.MeshLambertMaterial({color: 0x9fb4c8, side: THREE.DoubleSide, transparent: true, opacity: 0.28, depthWrite: false});
 const EDGE = new THREE.LineBasicMaterial({color: 0x1e1e1e});
 
 // ---------------------------------------------------------------- form library
 // Each builder returns {group, keys:[local top points], foot:[local footprint pts]}
 function finish(group, meshes) {
   for (const m of meshes) {
-    m.castShadow = true; m.receiveShadow = true; group.add(m);
+    const glass = m.material === GLASS;
+    m.castShadow = !glass; m.receiveShadow = !glass; group.add(m);
+    if (glass) m.renderOrder = 2;
     const e = new THREE.LineSegments(new THREE.EdgesGeometry(m.geometry, 25), EDGE);
     e.position.copy(m.position); e.rotation.copy(m.rotation); e.scale.copy(m.scale);
     group.add(e);
