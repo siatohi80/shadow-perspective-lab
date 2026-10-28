@@ -184,9 +184,9 @@ input.sw:focus-visible{outline:3px solid var(--md-primary);outline-offset:2px}
 .c-light label.sl input[type=range]{accent-color:var(--ray)}
 .vsliders{background:transparent;padding:4px 0 2px}
 /* camera dial: a floating, see-through pie on the drawing + the same dial in the Perspective panel */
-.xf-float{position:absolute;z-index:4;left:12px;top:12px;display:grid;justify-items:center;gap:6px;opacity:.9}
+.xf-float{position:absolute;z-index:4;left:8px;top:-19px;display:grid;justify-items:center;gap:6px;opacity:.9}
 .xf-float:hover{opacity:1}
-.xf-float .xf-hide{position:absolute;right:-6px;top:-6px}
+.xf-float .xf-hide{position:absolute;left:calc(50% + 42px);top:30px;right:auto}
 .xf-float:hover .xf-hide,.xf-hide:focus-visible{opacity:1}
 .xf-float[hidden]{display:none}
 .xf-row{display:flex;align-items:center;gap:6px}
@@ -196,12 +196,12 @@ input.sw:focus-visible{outline:3px solid var(--md-primary);outline-offset:2px}
 .ltrack{position:absolute;left:50%;top:12px;bottom:12px;width:8px;transform:translateX(-50%);border-radius:4px;background:rgba(138,71,8,.20);overflow:hidden}
 .lfill{position:absolute;left:0;right:0;bottom:0;background:rgba(47,91,183,.62);border-radius:4px}
 .lknob{position:absolute;left:50%;width:26px;height:26px;margin:-13px 0 0 -13px;border-radius:50%;background:#2f5bb7;border:2px solid #fff;box-shadow:0 1px 2px rgba(0,0,0,.3);display:grid;place-items:center;font:700 9.5px/1 var(--font);color:#fff;letter-spacing:-.02em;pointer-events:none}
-.xf-float svg{width:169px;height:169px;touch-action:none;overflow:visible;pointer-events:none}
+.xf-float svg{width:207px;height:207px;touch-action:none;overflow:visible;pointer-events:none}
 .xf-float svg *{pointer-events:visiblePainted}
 .xf-float svg:focus,.xf-float svg:focus-visible,.xf-h .vbox:focus,.xf-h .vbox:focus-visible{outline:none}
 .xf-cap{font:500 11.5px/1.45 var(--font);color:#44464f;text-align:center;background:#ffffffee;border:1px solid #c5c6d0;border-radius:var(--r-s);padding:3px 10px}
 .xf-cap output{font:500 11.5px var(--mono);color:#1d2329}
-.pie-float{position:absolute;z-index:4;width:176px;height:176px;border-radius:50%;opacity:.9;transition:opacity .15s;touch-action:none;-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
+.pie-float{position:absolute;z-index:4;width:144px;height:144px;border-radius:50%;opacity:.9;transition:opacity .15s;touch-action:none;-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
 .pie-float:hover,.pie-float.busy{opacity:.97}
 .pie-float[hidden]{display:none}
 .pie-hide{position:absolute;right:-4px;top:-4px;width:28px;height:28px;border-radius:50%;border:0;background:var(--md-surface);color:var(--md-on-surface-variant);display:grid;place-items:center;cursor:pointer;opacity:0;transition:opacity .15s;box-shadow:0 1px 3px rgba(0,0,0,.2)}
