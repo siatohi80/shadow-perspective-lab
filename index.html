@@ -1314,6 +1314,8 @@ function explain(d, f, Lp, Fp) {
                         : '<path d="M10 2v16M2 10h16M10 2l-2.5 2.5M10 2l2.5 2.5M10 18l-2.5-2.5M10 18l2.5-2.5M2 10l2.5-2.5M2 10l2.5 2.5M18 10l-2.5-2.5M18 10l-2.5 2.5" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>',
        S.view === 'free' ? 'orbit' : 'walk', S.view === 'free' ? 'Drag empty space to orbit' : 'Drag empty space to walk around the forms'),
     ic('<rect x="5.5" y="2" width="9" height="16" rx="4.5" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M10 5v4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>', 'zoom', 'Scroll or pinch to zoom'),
+    S.view === 'free' ? '' : ic('<rect x="5.5" y="2" width="9" height="16" rx="4.5" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M10 4.5v5" stroke="#e07400" stroke-width="2.4" stroke-linecap="round"/><path d="M17.5 6v8M15.8 7.8l1.7-1.8 1.7 1.8M15.8 12.2l1.7 1.8 1.7-1.8" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>',
+       S.view === '3pt' ? '⇧ tilt' : '⇧ horizon', S.view === '3pt' ? 'Shift + middle-drag up/down to tilt the view' : 'Shift + middle-drag up/down to raise or lower the horizon'),
   ].join('') + '</span>';
   const placeChip = !placing ? '' : placing.stage === 'rot'
     ? `<span class="badge place">Move to rotate${placing.deg != null ? ' · ' + placing.deg + '°' : ''} · click to place · Shift = free · Esc to cancel</span>`
@@ -1482,7 +1484,12 @@ function dragVP(v, mx) {
   S.az = Math.max(-89, Math.min(89, best.az));
   syncSliders();
 }
+glc.addEventListener('mousedown', e => { if (e.button === 1 && S.view !== 'free') e.preventDefault(); });  // no autoscroll
 glc.addEventListener('pointerdown', e => {
+  // Shift + middle-drag: tilt (3-pt) or raise / lower the horizon (1- and 2-pt)
+  if (e.button === 1 && e.shiftKey && S.view !== 'free' && !placing) {
+    e.preventDefault(); drag = {kind: 'tiltmm', y: e.clientY}; glc.setPointerCapture(e.pointerId); return;
+  }
   if (placing) {
     e.preventDefault();
     if (e.button !== 0) { endPlacing(false); return; }
@@ -1521,6 +1528,12 @@ glc.addEventListener('pointermove', e => {
   setNdc(e);
   if (drag.kind === 'vp') { dragVP(drag.v, stageXY(e).x); dirty = true; return; }
   if (drag.kind === 'hl') { S.shift = Math.max(-0.45, Math.min(0.45, stageXY(e).y / ov.clientHeight - 0.5)); syncSliders(); dirty = true; return; }
+  if (drag.kind === 'tiltmm') {
+    const dy = e.clientY - drag.y; drag.y = e.clientY;
+    if (S.view === '3pt') { S.tilt = Math.max(-85, Math.min(85, S.tilt - dy * 0.25)); if (Math.abs(S.tilt) < 1) S.tilt = dy > 0 ? -1 : 1; aimAtForms(); }
+    else S.shift = Math.max(-0.45, Math.min(0.45, S.shift + dy / ov.clientHeight));
+    syncSliders(); dirty = true; return;
+  }
   if (drag.kind === 'vp3') {
     // relative, logarithmic drag: VP3's distance from the centre shrinks or grows by a constant factor per pixel,
     // so it is as easy to steer when it is far off the page (gentle tilt) as when it is close (extreme view)
