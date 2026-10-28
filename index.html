@@ -257,7 +257,7 @@ const V3 = THREE.Vector3;
 const renderer = new THREE.WebGLRenderer({canvas: glc, antialias: true});
 renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
 renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.shadowMap.type = THREE.PCFShadowMap;  // crisp, drawing-like shadow edges
 renderer.setClearColor(0xfbfbf8);
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(50, 1, 0.1, 2000);
@@ -271,11 +271,11 @@ const sun = new THREE.DirectionalLight(0xffffff, 0.62);
 sun.castShadow = true;
 sun.shadow.mapSize.set(4096, 4096);
 Object.assign(sun.shadow.camera, {left: -30, right: 30, top: 30, bottom: -30, near: 1, far: 200});
-sun.shadow.bias = -0.0004; sun.shadow.normalBias = 0.02;
+sun.shadow.bias = -0.00015; sun.shadow.normalBias = 0;  // no offset: shadows start exactly at the base
 scene.add(sun); scene.add(sun.target);
 const plight = new THREE.PointLight(0xffffff, 0.75, 0, 1);
 plight.castShadow = true; plight.shadow.mapSize.set(2048, 2048);
-plight.shadow.camera.near = 0.1; plight.shadow.camera.far = 600; plight.shadow.bias = -0.002;
+plight.shadow.camera.near = 0.05; plight.shadow.camera.far = 400; plight.shadow.bias = -0.0004; plight.shadow.normalBias = 0;
 scene.add(plight);
 const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.22, 24, 12), new THREE.MeshBasicMaterial({color: 0xffa21f}));
 bulb.castShadow = false; scene.add(bulb);
@@ -284,10 +284,11 @@ const pole = new THREE.Line(new THREE.BufferGeometry().setFromPoints([new V3(), 
 scene.add(pole);
 
 // paper-toned ground (unlit) + a shadow-only layer: even ground tone, crisp grey cast shadows like a drawing
-const ground = new THREE.Mesh(new THREE.PlaneGeometry(4000, 4000), new THREE.MeshBasicMaterial({color: 0xe7e3da}));
-ground.rotation.x = -Math.PI / 2; scene.add(ground);
-const shadowLayer = new THREE.Mesh(new THREE.PlaneGeometry(240, 240), new THREE.ShadowMaterial({color: 0x1f1f1f, opacity: 0.42}));
-shadowLayer.rotation.x = -Math.PI / 2; shadowLayer.position.y = 0.001; shadowLayer.receiveShadow = true; scene.add(shadowLayer);
+// ground sits a hair below y = 0 and is pushed back in depth, so the bottom edges of forms (at y = 0) never z-fight with it
+const ground = new THREE.Mesh(new THREE.PlaneGeometry(4000, 4000), new THREE.MeshBasicMaterial({color: 0xe7e3da, polygonOffset: true, polygonOffsetFactor: 2, polygonOffsetUnits: 2}));
+ground.rotation.x = -Math.PI / 2; ground.position.y = -0.002; scene.add(ground);
+const shadowLayer = new THREE.Mesh(new THREE.PlaneGeometry(240, 240), new THREE.ShadowMaterial({color: 0x1f1f1f, opacity: 0.42, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1}));
+shadowLayer.rotation.x = -Math.PI / 2; shadowLayer.position.y = -0.001; shadowLayer.receiveShadow = true; scene.add(shadowLayer);
 const grid = new THREE.GridHelper(60, 60, 0xb9b3a8, 0xd4cfc6); grid.position.y = 0.002; grid.visible = false; scene.add(grid);
 
 const WHITE = new THREE.MeshLambertMaterial({color: 0xf6f6f2});
@@ -763,9 +764,17 @@ function applyLight() {
   sun.visible = isSun; plight.visible = !isSun; bulb.visible = !isSun; pole.visible = !isSun;
   if (isSun) {
     const u = sunDirToLight();
-    sun.target.position.copy(target);
-    sun.position.copy(target).addScaledVector(u, 60);
-    sun.shadow.camera.left = -30; sun.shadow.camera.updateProjectionMatrix();
+    // fit the sun's shadow frustum tightly around the forms and their shadows (sharper map, no clipping)
+    const box = new THREE.Box3(); forms.forEach(g => box.expandByObject(g));
+    const c = box.isEmpty() ? target.clone() : box.getCenter(new V3()).setY(0);
+    const size = box.isEmpty() ? new V3(4, 4, 4) : box.getSize(new V3());
+    const reach = Math.max(size.x, size.z) / 2 + size.y / Math.max(0.08, Math.tan(THREE.MathUtils.degToRad(S.sunEl))) + 1;
+    const half = Math.min(80, reach), far = 4 * half + size.y + 10;
+    sun.target.position.copy(c);
+    sun.position.copy(c).addScaledVector(u, 2 * half + size.y + 5);
+    Object.assign(sun.shadow.camera, {left: -half, right: half, top: half, bottom: -half, near: 0.5, far});
+    sun.shadow.camera.updateProjectionMatrix();
+    sun.target.updateMatrixWorld();
     hemi.intensity = 0.72;
   } else {
     plight.position.copy(S.pPos); bulb.position.copy(S.pPos);
