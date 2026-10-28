@@ -269,6 +269,7 @@ shadowLayer.rotation.x = -Math.PI / 2; shadowLayer.position.y = 0.001; shadowLay
 const grid = new THREE.GridHelper(60, 60, 0xb9b3a8, 0xd4cfc6); grid.position.y = 0.002; grid.visible = false; scene.add(grid);
 
 const WHITE = new THREE.MeshLambertMaterial({color: 0xf6f6f2});
+const GLASS = new THREE.MeshLambertMaterial({color: 0x8d99a6, side: THREE.DoubleSide});
 const EDGE = new THREE.LineBasicMaterial({color: 0x1e1e1e});
 
 // ---------------------------------------------------------------- form library
@@ -334,13 +335,51 @@ const LIB = {
     const slab = boxMesh(2.2, 0.15, 1.6, 0.6, 2.5, 0.175 + 0.8);
     return {g: finish(new THREE.Group(), [wall, slab]),
       keys: [...rectKeys(4.4, 0.35, 3.4), new V3(-0.5, 2.65, 1.775), new V3(1.7, 2.65, 1.775)]}; }},
+  sphere: {label: 'Sphere', make() {
+    const m = new THREE.Mesh(new THREE.SphereGeometry(1.4, 64, 32), WHITE); m.position.y = 1.4;
+    const ring = []; for (let i = 0; i < 16; i++) { const a = i / 16 * Math.PI * 2; ring.push(new V3(Math.cos(a) * 1.4, 1.4, Math.sin(a) * 1.4)); }
+    return {g: finish(new THREE.Group(), [m]), keys: ring, extra: {sphere: {r: 1.4}, noEdges: true}}; }},
+  cylinder: {label: 'Cylinder', make() {
+    const m = new THREE.Mesh(new THREE.CylinderGeometry(1.1, 1.1, 3.2, 64), WHITE); m.position.y = 1.6;
+    const ring = []; for (let i = 0; i < 32; i++) { const a = i / 32 * Math.PI * 2; ring.push(new V3(Math.cos(a) * 1.1, 3.2, Math.sin(a) * 1.1)); }
+    return {g: finish(new THREE.Group(), [m]), keys: ring, extra: {noEdges: true}}; }},
+  windows: {label: 'Window wall', make() {
+    // wall 6 m x 3.6 m x 0.5 m; front face at z = +0.25 faces the default viewer
+    const s = new THREE.Shape([[-3, 0], [3, 0], [3, 3.6], [-3, 3.6]].map(a => new THREE.Vector2(...a)));
+    const rect = (x0, x1, y0, y1) => { const h = new THREE.Path(); h.moveTo(x0, y0); h.lineTo(x1, y0); h.lineTo(x1, y1); h.lineTo(x0, y1); h.lineTo(x0, y0); return h; };
+    const arch = new THREE.Path(); arch.moveTo(-0.6, 1.0); arch.lineTo(0.6, 1.0); arch.lineTo(0.6, 2.0); arch.absarc(0, 2.0, 0.6, 0, Math.PI, false); arch.lineTo(-0.6, 1.0);
+    s.holes.push(rect(-2.4, -1.2, 1.0, 2.5), arch, rect(1.2, 2.4, 1.0, 2.5));
+    const wg = new THREE.ExtrudeGeometry(s, {depth: 0.5, bevelEnabled: false, curveSegments: 24}); wg.translate(0, 0, -0.25);
+    const ms = [new THREE.Mesh(wg, WHITE)];
+    // recessed glass (0.3 m reveal)
+    const pane = (w, h, x, y) => { const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), GLASS); m.position.set(x, y, -0.05); return m; };
+    ms.push(pane(1.2, 1.5, -1.8, 1.75), pane(1.2, 1.5, 1.8, 1.75));
+    const as = new THREE.Shape(); as.moveTo(-0.6, 1.0); as.lineTo(0.6, 1.0); as.lineTo(0.6, 2.0); as.absarc(0, 2.0, 0.6, 0, Math.PI, false); as.lineTo(-0.6, 1.0);
+    const ap = new THREE.Mesh(new THREE.ShapeGeometry(as, 24), GLASS); ap.position.z = -0.05; ms.push(ap);
+    // mullion cross in the left window, sills, and a hood over the right window
+    ms.push(boxMesh(0.06, 1.5, 0.06, -1.8, 1.0, -0.02), boxMesh(1.2, 0.06, 0.06, -1.8, 1.72, -0.02));
+    ms.push(boxMesh(1.5, 0.08, 0.35, -1.8, 0.92, 0.3), boxMesh(1.5, 0.08, 0.35, 1.8, 0.92, 0.3), boxMesh(1.0, 0.08, 0.3, 0, 0.92, 0.3));
+    ms.push(boxMesh(1.7, 0.1, 0.7, 1.8, 2.65, 0.6));
+    return {g: finish(new THREE.Group(), ms),
+      keys: [...rectKeys(6, 0.5, 3.6), new V3(0.95, 2.75, 0.95), new V3(2.65, 2.75, 0.95)]}; }},
+  bay: {label: 'Bay window', make() {
+    const wall = boxMesh(5.2, 3.6, 0.3, 0, 0, -0.15);
+    const plan = [[-1.3, 0], [1.3, 0], [0.8, 0.9], [-0.8, 0.9]];
+    const inset = plan.map(([x, z]) => [x * 0.96, z * 0.96]);
+    const part = (pts, y0, y1, mat) => { const m = extrudePlan(pts, y1 - y0); m.position.y = y0; m.material = mat; return m; };
+    const roofPlan = [[-1.45, 0], [1.45, 0], [0.9, 1.05], [-0.9, 1.05]];
+    const ms = [wall, part(plan, 0.6, 1.1, WHITE), part(inset, 1.1, 2.4, GLASS), part(plan, 2.4, 2.65, WHITE), part(roofPlan, 2.65, 2.8, WHITE)];
+    // mullions at the bay corners
+    for (const [x, z] of plan) ms.push(boxMesh(0.08, 1.3, 0.08, x * 0.98, 1.1, z * 0.98));
+    return {g: finish(new THREE.Group(), ms),
+      keys: [...rectKeys(5.2, 0.3, 3.6, 0, -0.15), ...roofPlan.map(([x, z]) => new V3(x, 2.8, z)), ...plan.map(([x, z]) => new V3(x, 0.6, z))]}; }},
 };
 
 let forms = [], selected = null;
 function addForm(type, x, z, rot = 0) {
-  const {g, keys} = LIB[type].make();
+  const {g, keys, extra} = LIB[type].make();
   g.position.set(x, 0, z); g.rotation.y = rot;
-  g.userData = {type, keys};
+  g.userData = Object.assign({type, keys}, extra || {});
   scene.add(g); forms.push(g); select(g); return g;
 }
 function removeForm(g) { scene.remove(g); forms = forms.filter(f => f !== g); if (selected === g) select(forms[forms.length - 1] || null); }
@@ -440,6 +479,22 @@ function hull(pts) {
   for (const p of P.slice().reverse()) { while (up.length >= 2 && cr(up[up.length - 2], up[up.length - 1], p) <= 1e-9) up.pop(); up.push(p); }
   return lo.slice(0, -1).concat(up.slice(0, -1));
 }
+// sphere: the shadow outline is cast by the terminator circle (where rays graze the sphere)
+function sphereOutline(g, d, Lw) {
+  const R = g.userData.sphere.r * g.scale.x;
+  const C = g.localToWorld(new V3(0, g.userData.sphere.r, 0));
+  let u, c, rad;
+  if (d) { u = d.clone().negate().normalize(); c = C.clone(); rad = R; }
+  else {
+    const D = Lw.distanceTo(C); if (D <= R * 1.01) return [];
+    u = Lw.clone().sub(C).normalize(); c = C.clone().addScaledVector(u, R * R / D); rad = R * Math.sqrt(1 - R * R / (D * D));
+  }
+  const e1 = new V3(0, 1, 0).cross(u); if (e1.lengthSq() < 1e-6) e1.set(1, 0, 0); e1.normalize();
+  const e2 = u.clone().cross(e1).normalize();
+  const out = [];
+  for (let i = 0; i < 48; i++) { const a = i / 48 * Math.PI * 2; out.push(c.clone().addScaledVector(e1, Math.cos(a) * rad).addScaledVector(e2, Math.sin(a) * rad)); }
+  return out;
+}
 function css(n) { return getComputedStyle(document.documentElement).getPropertyValue(n).trim(); }
 const COL = {hl: '#1f5ac8', ray: '#e07400', shad: '#13935a', pt: '#d21f2c', grey: '#8a8a8a', ink: '#1d2329'};
 
@@ -494,7 +549,7 @@ function drawOverlay() {
     const names = named.length === 2 ? ['VPL', 'VPR'] : ['VP'];
     named.forEach((p, i) => inside(p) ? (dot(p, 4.5, COL.hl), tag(p, names[i], COL.hl, 8, 18)) : edgeArrow(p, names[i] + ' off page', COL.hl));
   }
-  if (S.showEdges && ref) {
+  if (S.showEdges && ref && !ref.userData.noEdges) {
     // extend the reference form's base and top edges to their VPs
     const keys = ref.userData.keys.filter(k => Math.abs(k.y - ref.userData.keys[0].y) < 1e-6).slice(0, 4);
     if (keys.length === 4) {
@@ -525,8 +580,9 @@ function drawOverlay() {
   const list = S.all ? forms : (selected ? [selected] : []);
   for (const g of list) {
     const rows = [];
-    for (const k of g.userData.keys) {
-      const P = g.localToWorld(k.clone()); if (P.y <= 0.001) continue;
+    const pts = g.userData.sphere ? sphereOutline(g, d, Lw) : g.userData.keys.map(k => g.localToWorld(k.clone()));
+    for (const P of pts) {
+      if (P.y <= 0.001) continue;
       let Sh;
       if (d) { if (d.y >= -1e-4) continue; Sh = P.clone().addScaledVector(d, -P.y / d.y); }
       else { if (Lw.y <= P.y + 0.02) continue; Sh = Lw.clone().add(P.clone().sub(Lw).multiplyScalar(Lw.y / (Lw.y - P.y))); }
@@ -535,7 +591,17 @@ function drawOverlay() {
     }
     if (!rows.length) continue;
     const hv = new Set(hull(rows.map(r => r.F).concat(rows.map(r => r.S))));
-    const sel = rows.filter(r => hv.has(r.S));
+    let sel = rows.filter(r => hv.has(r.S));
+    if (g.userData.noEdges) {
+      // curved form: trace the shadow of the curve, and construct only a few sample points
+      const ring = rows.map(r => toScreen(r.S));
+      if (ring.every(Boolean)) {
+        octx.setLineDash([]); octx.beginPath(); octx.strokeStyle = COL.pt; octx.lineWidth = 1.5;
+        ring.forEach((q, i) => i ? octx.lineTo(q.x, q.y) : octx.moveTo(q.x, q.y)); octx.closePath(); octx.stroke();
+      }
+      const step = Math.max(1, Math.ceil(sel.length / 4));
+      sel = sel.filter((_, i) => i % step === 0);
+    }
     for (const r of sel) {
       const P = toScreen(r.P), F = toScreen(r.F), Sp = toScreen(r.S);
       if (!P || !F || !Sp) continue;
