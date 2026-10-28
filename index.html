@@ -144,6 +144,14 @@ input.sw:focus-visible{outline:3px solid var(--md-primary);outline-offset:2px}
 .vtrack input[type=range]::-moz-range-track{height:6px;border-radius:3px}
 .vtrack input[type=range]::-webkit-slider-thumb{width:20px;height:20px;margin-top:-7px}
 .giz svg{outline:none}
+.fsel{position:relative;min-width:0}
+.fsel-btn{width:100%;height:40px;display:flex;align-items:center;gap:6px;padding:0 6px 0 12px;border-radius:4px;border:1px solid var(--md-outline);background:var(--md-surface);color:var(--md-on-surface);font:400 14px var(--font);cursor:pointer;text-align:left}
+.fsel-btn:hover{border-color:var(--md-on-surface)}
+.fsel-btn[aria-expanded="true"]{border:2px solid var(--md-primary);padding-left:11px}
+.fsel-txt{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fsel-menu{left:0;right:auto;width:max(100%,220px)}
+.fsel-menu .mh{padding-top:10px;border-top:1px solid var(--md-outline-variant);margin-top:4px}
+.fsel-menu .mh:first-child{border-top:0;margin-top:0;padding-top:6px}
 .addrow{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:end}
 .selbox{display:grid;gap:10px;padding:12px;border-radius:var(--r-s);background:color-mix(in srgb,var(--md-surface) 70%,transparent)}
 .fields{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr);gap:10px}
@@ -820,6 +828,48 @@ for (const [cat, keys] of CATS) {
   const og = document.createElement('optgroup'); og.label = cat;
   for (const k of keys) { const o = document.createElement('option'); o.value = k; o.textContent = LIB[k].label; og.appendChild(o); }
   selForm.appendChild(og);
+}
+
+// ---- Material-style dropdowns: the native <select> stays as the value holder; a styled menu replaces its popup
+const fancies = [];
+function enhanceSelect(sel) {
+  const wrap = document.createElement('div'); wrap.className = 'fsel';
+  const btn = document.createElement('button'); btn.type = 'button'; btn.className = 'fsel-btn';
+  btn.setAttribute('aria-haspopup', 'listbox'); btn.setAttribute('aria-expanded', 'false');
+  const lab = sel.closest('label'); if (lab) { btn.setAttribute('aria-label', lab.firstChild.textContent.trim()); }
+  const txt = document.createElement('span'); txt.className = 'fsel-txt';
+  const car = document.createElement('span'); car.className = 'msi'; car.setAttribute('aria-hidden', 'true'); car.textContent = 'arrow_drop_down';
+  btn.append(txt, car);
+  const list = document.createElement('div'); list.className = 'menu fsel-menu'; list.setAttribute('role', 'listbox'); list.hidden = true;
+  sel.hidden = true; sel.after(wrap); wrap.append(btn, list);
+  if (lab) lab.addEventListener('click', e => { if (e.target === lab) e.preventDefault(); });
+  const update = () => { const o = sel.options[sel.selectedIndex]; txt.textContent = o ? o.textContent : ''; };
+  const close = () => { list.hidden = true; btn.setAttribute('aria-expanded', 'false'); };
+  const open = () => {
+    list.innerHTML = '';
+    const addOpt = o => {
+      const b = document.createElement('button'); b.type = 'button'; b.setAttribute('role', 'option');
+      b.setAttribute('aria-selected', o.value === sel.value); b.textContent = o.textContent;
+      b.onclick = () => { sel.value = o.value; sel.dispatchEvent(new Event('change')); update(); close(); btn.focus(); };
+      list.appendChild(b);
+    };
+    for (const c of sel.children) {
+      if (c.tagName === 'OPTGROUP') { const h = document.createElement('div'); h.className = 'mh'; h.textContent = c.label; list.appendChild(h); [...c.children].forEach(addOpt); }
+      else addOpt(c);
+    }
+    list.hidden = false; btn.setAttribute('aria-expanded', 'true');
+    const cur = list.querySelector('[aria-selected="true"]') || list.querySelector('button'); cur && (cur.focus(), cur.scrollIntoView({block: 'nearest'}));
+  };
+  btn.onclick = e => { e.stopPropagation(); list.hidden ? (fancies.forEach(f => f.close()), open()) : close(); };
+  list.addEventListener('keydown', e => {
+    const items = [...list.querySelectorAll('button')], i = items.indexOf(document.activeElement);
+    if (e.key === 'Escape') { close(); btn.focus(); }
+    if (e.key === 'ArrowDown') { e.preventDefault(); items[Math.min(items.length - 1, i + 1)].focus(); }
+    if (e.key === 'ArrowUp') { e.preventDefault(); items[Math.max(0, i - 1)].focus(); }
+  });
+  document.addEventListener('pointerdown', e => { if (!wrap.contains(e.target)) close(); });
+  update();
+  const f = {update, close}; fancies.push(f); return f;
 }
 function showWinFields() { $('winFields').hidden = !(selForm.value === 'windows' || (selected && selected.userData.type === 'windows')); }
 selForm.addEventListener('change', showWinFields);
@@ -1672,8 +1722,10 @@ function frame() {
   drawOverlay();
   drawPlan();
   drawGizmos();
+  fancies.forEach(f => f.update());
 }
 
+['selForm', 'selWin', 'selWinN'].forEach(id => enhanceSelect($(id)));
 // starting scene: cube + tower in two-point perspective, sun behind the forms
 addForm('cube', -2.0, 0.6);
 addForm('tower', 1.6, -0.6);
