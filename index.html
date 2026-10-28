@@ -184,6 +184,13 @@ input.sw:focus-visible{outline:3px solid var(--md-primary);outline-offset:2px}
 .c-light label.sl input[type=range]{accent-color:var(--ray)}
 .vsliders{background:transparent;padding:4px 0 2px}
 /* camera dial: a floating, see-through pie on the drawing + the same dial in the Perspective panel */
+.xf-float{position:absolute;z-index:4;right:12px;top:50%;transform:translateY(-50%);display:grid;justify-items:center;gap:6px;opacity:.92}
+.xf-float:hover{opacity:1}
+.xf-float[hidden]{display:none}
+.xf-float svg{width:132px;height:132px;touch-action:none;cursor:grab;border-radius:50%;background:rgba(255,255,255,.6);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
+.xf-float svg:focus-visible{outline:3px solid #2f5bb7;outline-offset:2px}
+.xf-cap{font:500 11.5px/1.45 var(--font);color:#44464f;text-align:center;background:#ffffffee;border:1px solid #c5c6d0;border-radius:var(--r-s);padding:3px 10px}
+.xf-cap output{font:500 11.5px var(--mono);color:#1d2329}
 .pie-float{position:absolute;z-index:4;width:176px;height:176px;border-radius:50%;opacity:.9;transition:opacity .15s;touch-action:none;-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
 .pie-float:hover,.pie-float.busy{opacity:.97}
 .pie-float[hidden]{display:none}
@@ -237,7 +244,9 @@ label.chip:has(input:focus-visible){outline:3px solid var(--md-primary);outline-
 .sel{font:500 12px var(--mono);color:var(--md-on-surface-variant)}
 .row{display:flex;flex-wrap:wrap;gap:8px}
 .camrow{display:flex;align-items:center;gap:8px;background:var(--md-surface);border-radius:var(--r-m);padding:4px 4px 4px 0}
-.camrow .tg.tg-inline{flex:1 1 auto}
+.camrow .tg.tg-inline{flex:1 1 auto;padding:8px 8px;gap:6px;font-size:13px}
+.camrow .btn.icon{padding:0;width:40px;justify-content:center;flex:none}
+.camrow .tg.tg-inline span{white-space:nowrap}
 .btn:disabled{opacity:.45;cursor:default;pointer-events:none}
 .snack{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--md-on-surface);color:var(--md-surface);padding:14px 16px;border-radius:4px;font-size:14px;box-shadow:var(--elev1);max-width:min(560px,calc(100% - 32px));z-index:20}
 @media (max-width:900px){
@@ -266,6 +275,8 @@ label.chip:has(input:focus-visible){outline:3px solid var(--md-primary);outline-
   <div class="stage" id="stage">
     <canvas id="gl"></canvas>
     <canvas id="overlay"></canvas>
+    <div class="xf-float" id="xfFloat" hidden><svg id="gXf" viewBox="-66 -66 132 132" role="group" tabindex="0" aria-label="Rotate and size the selected form: drag the ring to rotate, drag inside to resize; arrow keys rotate, plus and minus resize"></svg>
+      <div class="xf-cap">Rotate <output id="oRot"></output><br>Size <output id="oScale"></output></div></div>
     <div class="pie-float" id="pieFloat" title="Camera dial: drag a slice to change it, drag the centre to move the dial"><svg id="pieSvg" viewBox="-130 -130 260 260" role="group" aria-label="Camera dial"></svg><button class="pie-hide" id="pieHide" title="Hide the camera dial (turn it back on in Perspective)" aria-label="Hide camera dial"><span class="msi" aria-hidden="true">visibility_off</span></button></div>
     <div class="readout" id="readout"></div>
     <div class="drop" id="drop" hidden>Drop a .glb, .gltf, .obj or .stl file</div>
@@ -291,8 +302,8 @@ label.chip:has(input:focus-visible){outline:3px solid var(--md-primary);outline-
       <label class="vs" for="sTilt" id="lbTilt" hidden><output id="oTilt"></output><span class="vtrack"><input id="sTilt" type="range" min="-85" max="85" step="1" value="25"></span><span class="vl">Tilt</span></label>
       <label class="vs" for="sShift"><output id="oShift"></output><span class="vtrack"><input id="sShift" type="range" min="0.05" max="0.95" step="0.01" value="0.38"></span><span class="vl">Horizon</span></label>
       </div>
-      <div class="camrow"><label class="tg tg-inline" for="cDial"><span>Camera dial</span><input type="checkbox" class="sw" id="cDial" checked></label>
-        <button class="btn tonal" id="bFit"><span class="msi" aria-hidden="true">fit_screen</span>Fit view</button></div>
+      <div class="camrow"><label class="tg tg-inline" for="cDial"><span>Camera dial</span><input type="checkbox" class="sw" id="cDial" checked></label><label class="tg tg-inline" for="cXf"><span>Form dial</span><input type="checkbox" class="sw" id="cXf" checked></label>
+        <button class="btn tonal icon" id="bFit" title="Fit view to the forms" aria-label="Fit view"><span class="msi" aria-hidden="true">fit_screen</span></button></div>
       
     </section>
 
@@ -330,8 +341,6 @@ label.chip:has(input:focus-visible){outline:3px solid var(--md-primary);outline-
       </div>
       <div class="selbox" id="selBox" hidden>
       <div class="sel" id="selName">No form selected</div>
-      <figure class="giz one"><svg id="gXf" viewBox="-66 -66 132 132" role="group" tabindex="0" aria-label="Rotate and size the selected form: drag the ring to rotate, drag inside to resize; arrow keys rotate, plus and minus resize"></svg>
-        <figcaption>Rotate <output id="oRot"></output><br>Size <output id="oScale"></output></figcaption></figure>
       <div hidden><input id="sRot" type="range" min="0" max="359" step="1" value="0"><input id="sScale" type="range" min="0.2" max="5" step="0.01" value="1"></div>
       <div class="row">
         <button class="btn outlined" id="bUp" hidden><span class="msi" aria-hidden="true">screen_rotation_alt</span>Stand upright</button>
@@ -865,7 +874,7 @@ function select(g) {
   $('sScale').value = sc; $('oScale').textContent = '×' + sc.toFixed(2); $('sScale').disabled = !g;
   $('bUp').hidden = !(g && g.userData.type === 'model');
   if (g && g.userData.type === 'windows') { $('selWin').value = g.userData.winStyle; $('selWinN').value = g.userData.winN; }
-  $('selBox').hidden = !g; $('bDel').disabled = !g;
+  $('selBox').hidden = !g; $('bDel').disabled = !g; $('xfFloat').hidden = !g || !$('cXf').checked;
   if (typeof markSwatch === 'function') markSwatch();
   showWinFields();
   dirty = true;
@@ -2078,6 +2087,7 @@ const fileIn = $('fileIn');
 $('bImport2').onclick = () => fileIn.click();
 // right-drag on the drawing walks / orbits: never show the browser's context menu there
 glc.addEventListener('contextmenu', e => e.preventDefault());
+$('cXf').addEventListener('change', e => { $('xfFloat').hidden = !selected || !e.target.checked; dirty = true; });
 // Export: the drawing plus its construction overlay, as a PNG
 $('bShot').onclick = () => {
   applyCamera(); applyLight(); renderer.render(scene, camera); drawOverlay();   // fresh frame, read before the buffer clears
