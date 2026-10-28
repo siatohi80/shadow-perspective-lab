@@ -86,7 +86,7 @@ body{margin:0;background:var(--md-surface);color:var(--md-on-surface);font:400 1
 .drop{position:absolute;inset:0;display:grid;place-items:center;background:rgba(47,91,183,.12);border:3px dashed #2f5bb7;border-radius:var(--r-l);color:#001946;font:500 18px var(--font);pointer-events:none}
 .sheet{min-width:0;overflow:auto;display:flex;flex-direction:column;gap:12px;padding-bottom:4px}
 .card{background:var(--md-surface-low);border-radius:var(--r-m);padding:16px;display:grid;gap:12px;border:1px solid var(--md-outline-variant)}
-.card h2{font-size:14px;line-height:20px;font-weight:500;margin:0;display:flex;align-items:center;gap:8px;color:var(--md-on-surface)}
+.card h2{font-size:18px;line-height:24px;font-weight:600;margin:0;display:flex;align-items:center;gap:8px;color:var(--md-on-surface)}
 .card h2 .msi{color:var(--md-primary)}
 .card.c-view{background:var(--p-view);border:0}.card.c-view h2 .msi{color:var(--p-view-ink)}
 .card.c-light{background:var(--p-light);border:0}.card.c-light h2 .msi{color:var(--p-light-ink)}
@@ -163,7 +163,6 @@ input.sw:focus-visible{outline:3px solid var(--md-primary);outline-offset:2px}
 .fsel-menu button[role=option]:focus-visible{outline:2px solid var(--md-primary);outline-offset:-2px;background:color-mix(in srgb,var(--md-primary) 12%,transparent)}
 .fsel-menu button[role=option][aria-selected="true"]{background:var(--md-secondary-container);color:var(--md-on-secondary-container);font-weight:600}
 .fsel-menu button[role=option][aria-selected="true"]::before{content:"";position:absolute;left:6px;top:6px;bottom:6px;width:4px;border-radius:2px;background:var(--md-primary)}
-.fsel-menu button[role=option][aria-selected="true"]::after{content:"✓";position:absolute;right:14px;font-weight:700;color:var(--md-primary)}
 .importrow{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;background:var(--md-surface);border-radius:var(--r-m);padding:6px 6px 6px 8px}
 .tg.tg-inline{display:flex;flex:1 1 100%;justify-content:space-between;grid-template-columns:none;gap:10px;padding:8px 10px;font-size:14px}
 /* liquid-glass capsules around sliders: frosted fill only (no outline, no shadow) */
@@ -202,7 +201,7 @@ input.sw:focus-visible{outline:3px solid var(--md-primary);outline-offset:2px}
 .seg button:first-child{border-left:0}
 .seg button[aria-pressed="true"]{background:var(--md-secondary-container);color:var(--md-on-secondary-container)}
 .seg button .chk{display:none}
-.seg button[aria-pressed="true"] .chk{display:inline-block}
+.seg button[aria-pressed="true"] .chk{display:none}
 .seg button[aria-pressed="true"] .ico{display:none}
 /* sliders */
 label.sl{display:grid;grid-template-columns:104px minmax(0,1fr) 58px;align-items:center;gap:8px;font-size:13px;color:var(--md-on-surface-variant)}
@@ -231,6 +230,9 @@ label.chip:has(input:focus-visible){outline:3px solid var(--md-primary);outline-
 .note{font-size:12px;line-height:16px;color:var(--md-on-surface-variant);margin:0}
 .sel{font:500 12px var(--mono);color:var(--md-on-surface-variant)}
 .row{display:flex;flex-wrap:wrap;gap:8px}
+.camrow{display:flex;align-items:center;gap:8px;background:var(--md-surface);border-radius:var(--r-m);padding:4px 4px 4px 0}
+.camrow .tg.tg-inline{flex:1 1 auto}
+.btn:disabled{opacity:.45;cursor:default;pointer-events:none}
 .snack{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--md-on-surface);color:var(--md-surface);padding:14px 16px;border-radius:4px;font-size:14px;box-shadow:var(--elev1);max-width:min(560px,calc(100% - 32px));z-index:20}
 @media (max-width:900px){
   .app{grid-template-columns:1fr}
@@ -260,7 +262,7 @@ label.chip:has(input:focus-visible){outline:3px solid var(--md-primary);outline-
     <canvas id="gl"></canvas>
     <canvas id="overlay"></canvas>
     <div class="pie-float" id="pieFloat" title="Camera dial: drag a slice to change it, drag the centre to move the dial"><svg id="pieSvg" viewBox="-130 -130 260 260" role="group" aria-label="Camera dial"></svg><button class="pie-hide" id="pieHide" title="Hide the camera dial (turn it back on in Perspective)" aria-label="Hide camera dial"><span class="msi" aria-hidden="true">visibility_off</span></button></div>
-    <div class="hint" id="hint">Drag a form to move it · drag the glowing bulb to move the light · drag empty space to walk around</div>
+    <div class="hint" id="hint">Drag a form or the bulb to move it · drag empty space to walk around · scroll to zoom</div>
     <div class="readout" id="readout"></div>
     <div class="drop" id="drop" hidden>Drop a .glb, .gltf, .obj or .stl file</div>
   </div>
@@ -275,7 +277,7 @@ label.chip:has(input:focus-visible){outline:3px solid var(--md-primary);outline-
         <button id="v1" aria-pressed="false"><span class="msi chk">check</span>1-pt</button>
         <button id="v2" aria-pressed="true"><span class="msi chk">check</span>2-pt</button>
         <button id="v4" aria-pressed="false"><span class="msi chk">check</span>3-pt</button>
-        <button id="v3" aria-pressed="false"><span class="msi chk">check</span>Free</button>
+        <button id="v3" aria-pressed="false"><span class="msi chk">check</span>Free orbit</button>
       </div>
       <div class="vsliders" hidden>
       <label class="vs" for="sAz"><output id="oAz"></output><span class="vtrack"><input id="sAz" type="range" min="-89" max="89" step="1" value="35"></span><span class="vl">Angle</span></label>
@@ -285,8 +287,8 @@ label.chip:has(input:focus-visible){outline:3px solid var(--md-primary);outline-
       <label class="vs" for="sTilt" id="lbTilt" hidden><output id="oTilt"></output><span class="vtrack"><input id="sTilt" type="range" min="-80" max="80" step="1" value="25"></span><span class="vl">Tilt</span></label>
       <label class="vs" for="sShift"><output id="oShift"></output><span class="vtrack"><input id="sShift" type="range" min="0.05" max="0.95" step="0.01" value="0.38"></span><span class="vl">Horizon</span></label>
       </div>
-      <div class="toggles"><label class="tg tg-inline" for="cDial"><span>Camera dial on the drawing</span><input type="checkbox" class="sw" id="cDial" checked></label></div>
-      <div class="row"><button class="btn tonal" id="bFit"><span class="msi" aria-hidden="true">fit_screen</span>Fit view to forms</button></div>
+      <div class="camrow"><label class="tg tg-inline" for="cDial"><span>Camera dial</span><input type="checkbox" class="sw" id="cDial" checked></label>
+        <button class="btn tonal" id="bFit"><span class="msi" aria-hidden="true">fit_screen</span>Fit view</button></div>
       
     </section>
 
@@ -329,10 +331,9 @@ label.chip:has(input:focus-visible){outline:3px solid var(--md-primary);outline-
       <div hidden><input id="sRot" type="range" min="0" max="359" step="1" value="0"><input id="sScale" type="range" min="0.2" max="5" step="0.01" value="1"></div>
       <div class="row">
         <button class="btn outlined" id="bUp" hidden><span class="msi" aria-hidden="true">screen_rotation_alt</span>Stand upright</button>
-        <button class="btn danger" id="bDel"><span class="msi" aria-hidden="true">delete</span>Remove</button>
       </div>
       </div>
-      <div class="row"><button class="btn" id="bClear"><span class="msi" aria-hidden="true">clear_all</span>Clear all</button></div>
+      <div class="row"><button class="btn danger" id="bDel" disabled><span class="msi" aria-hidden="true">delete</span>Remove</button><button class="btn" id="bClear"><span class="msi" aria-hidden="true">clear_all</span>Clear all</button></div>
     </section>
 
     <section class="card c-lines" aria-labelledby="h-ov">
@@ -855,7 +856,7 @@ function select(g) {
   $('sScale').value = sc; $('oScale').textContent = '×' + sc.toFixed(2); $('sScale').disabled = !g;
   $('bUp').hidden = !(g && g.userData.type === 'model');
   if (g && g.userData.type === 'windows') { $('selWin').value = g.userData.winStyle; $('selWinN').value = g.userData.winN; }
-  $('selBox').hidden = !g;
+  $('selBox').hidden = !g; $('bDel').disabled = !g;
   if (typeof markSwatch === 'function') markSwatch();
   showWinFields();
   dirty = true;
@@ -1428,15 +1429,33 @@ controls.addEventListener('change', () => dirty = true);
 // Two copies of the same dial: one floating on the drawing (see-through, movable by its centre, top-right by
 // default) and one in the Perspective panel. Drag a slice in any direction (right/up = more) or scroll over it.
 const PIE_PARAMS = [
-  {key: 'az', label: 'Angle', min: -89, max: 89, step: 0.4, fmt: v => Math.round(v) + '°', views: ['1pt', '2pt', '3pt']},
   {key: 'eye', label: 'Eye', min: 0.3, max: 40, log: true, fmt: v => v.toFixed(1) + ' m', views: ['1pt', '2pt', '3pt']},
+  {key: 'feye', label: 'Eye', min: 0.3, max: 60, log: true, fmt: v => v.toFixed(1) + ' m', views: ['free']},
+  {key: 'az', label: 'Angle', min: -89, max: 89, step: 0.4, fmt: v => Math.round(v) + '°', views: ['1pt', '2pt', '3pt']},
+  {key: 'faz', label: 'Angle', min: -180, max: 180, step: 0.5, wrap: true, fmt: v => Math.round(v) + '°', views: ['free']},
   {key: 'dist', label: 'Distance', min: 2, max: 200, log: true, fmt: v => v.toFixed(1) + ' m', views: ['1pt', '2pt', '3pt']},
+  {key: 'fdist', label: 'Distance', min: 1, max: 200, log: true, fmt: v => v.toFixed(1) + ' m', views: ['free']},
   {key: 'lens', label: 'Lens', min: 8, max: 300, log: true, fmt: v => Math.round(v) + ' mm', views: ['1pt', '2pt', '3pt', 'free']},
   {key: 'tilt', label: 'Tilt', min: -80, max: 80, step: 0.4, fmt: v => Math.round(v) + '°', views: ['3pt']},
   {key: 'hz', label: 'Horizon', min: 0.05, max: 0.95, step: 0.003, fmt: v => Math.round(v * 100) + '%', views: ['1pt', '2pt']},
 ];
-const pget = k => k === 'hz' ? 0.5 - S.shift : S[k];
+// free orbit: angle / eye / distance are read from and written to the orbiting camera itself
+function freeGet(k) {
+  const t = controls.target, p = camera.position;
+  if (k === 'faz') return THREE.MathUtils.radToDeg(Math.atan2(p.x - t.x, p.z - t.z));
+  if (k === 'feye') return p.y;
+  return Math.hypot(p.x - t.x, p.z - t.z);
+}
+function freeSet(k, v) {
+  const t = controls.target, p = camera.position;
+  let az = Math.atan2(p.x - t.x, p.z - t.z), h = Math.hypot(p.x - t.x, p.z - t.z), y = p.y;
+  if (k === 'faz') az = THREE.MathUtils.degToRad(v); else if (k === 'feye') y = v; else h = v;
+  p.set(t.x + Math.sin(az) * h, Math.max(t.y + 0.05, y), t.z + Math.cos(az) * h);
+  camera.lookAt(t); controls.update();
+}
+const pget = k => k[0] === 'f' ? freeGet(k) : k === 'hz' ? 0.5 - S.shift : S[k];
 function pset(k, v) {
+  if (k[0] === 'f') { freeSet(k, v); dirty = true; return; }
   if (k === 'hz') S.shift = 0.5 - v; else S[k] = v;
   if (k === 'az' && S.view !== '3pt') setViewButtons(Math.abs(S.az) < 0.5 ? '1pt' : '2pt', true);
   syncSliders(); dirty = true;
@@ -1444,7 +1463,8 @@ function pset(k, v) {
 const norm = (P, v) => P.log ? Math.log(v / P.min) / Math.log(P.max / P.min) : (v - P.min) / (P.max - P.min);
 function nudge(P, px) {
   const v = pget(P.key);
-  const nv = P.log ? v * Math.pow(P.max / P.min, px / 420) : v + px * P.step;
+  let nv = P.log ? v * Math.pow(P.max / P.min, px / 420) : v + px * P.step;
+  if (P.wrap) nv = ((nv - P.min) % (P.max - P.min) + (P.max - P.min)) % (P.max - P.min) + P.min;
   pset(P.key, Math.min(P.max, Math.max(P.min, nv)));
 }
 const R0 = 44, R1 = 126;
@@ -1492,7 +1512,7 @@ function makeDial(svg, movable) {
     } else if (movable) {   // four-way arrows: drag here to move the dial
       el('path', {d: 'M0 -15V15M-15 0H15M0 -15l-5 5M0 -15l5 5M0 15l-5 -5M0 15l5 -5M-15 0l5 -5M-15 0l5 5M15 0l-5 -5M15 0l-5 5', stroke: 'var(--dial-ink2)', 'stroke-width': 2.4, 'stroke-linecap': 'round', fill: 'none', 'data-hub': '1'}, hub);
     } else {
-      el('text', {x: 0, y: 6, 'text-anchor': 'middle', 'font-size': 15, 'font-weight': 600, style: 'fill:var(--md-on-surface-variant)'}, hub).textContent = {'1pt': '1-pt', '2pt': '2-pt', '3pt': '3-pt', free: 'Free'}[S.view];
+      el('text', {x: 0, y: 6, 'text-anchor': 'middle', 'font-size': 15, 'font-weight': 600, style: 'fill:var(--md-on-surface-variant)'}, hub).textContent = {'1pt': '1-pt', '2pt': '2-pt', '3pt': '3-pt', free: 'Orbit'}[S.view];
     }
   };
   svg.addEventListener('pointerdown', e => {
@@ -1546,8 +1566,14 @@ function setDialVisible(on) {
 $('cDial').addEventListener('change', e => setDialVisible(e.target.checked));
 $('pieHide').addEventListener('click', e => { e.stopPropagation(); setDialVisible(false); });
 // the dial always starts switched on; hiding it lasts only for the current visit
-// right-click the drawing: bring the dial to the pointer
-glc.addEventListener('contextmenu', e => { e.preventDefault(); if (pieFloat.hidden) setDialVisible(true); const w = pieFloat.offsetWidth; placeFloat(e.clientX - w / 2, e.clientY - w / 2, true); saveFloat(); });
+// scroll (or pinch) on the drawing zooms in 1-, 2- and 3-point too: the station point walks toward / away from the forms
+glc.addEventListener('wheel', e => {
+  if (S.view === 'free') return;            // OrbitControls zooms in free orbit
+  e.preventDefault();
+  const k = Math.pow(1.0015, e.deltaY * (e.ctrlKey ? 4 : 1));
+  S.dist = Math.min(200, Math.max(2, S.dist * k));
+  syncSliders(); dirty = true;
+}, {passive: false});
 
 
 // ---------------------------------------------------------------- UI wiring
@@ -1605,7 +1631,7 @@ function setViewButtons(v, keepAz) {
     $('hint').textContent = 'Drag empty space to orbit · scroll to zoom · drag forms or the bulb to move them';
   } else {
     controls.enabled = false;
-    $('hint').textContent = 'Drag a form to move it · drag the glowing bulb to move the light · drag empty space to walk around';
+    $('hint').textContent = 'Drag a form or the bulb to move it · drag empty space to walk around · scroll to zoom';
   }
   syncSliders(); dirty = true; if (typeof drawDials === 'function') drawDials();
 }
