@@ -21,6 +21,9 @@
   --md-on-surface:#1a1b21; --md-on-surface-variant:#44464f; --md-outline:#757780; --md-outline-variant:#c5c6d0;
   --md-error:#ba1a1a;
   --ray:#e07400; --shadow:#13935a; --point:#d21f2c;
+  --p-view:#e4ecff; --p-view-ink:#2f5bb7; --p-light:#fff0df; --p-light-ink:#a65400;
+  --p-forms:#e3f3e8; --p-forms-ink:#1d7a46; --p-lines:#eeedf3; --p-lines-ink:#5b5d72;
+  --p-explain:#1f3f86; --p-explain-ink:#ffffff;
   --font:"Roboto Flex","Roboto",system-ui,-apple-system,"Segoe UI",sans-serif;
   --mono:"Roboto Mono",ui-monospace,Menlo,monospace;
   --r-s:8px; --r-m:12px; --r-l:16px; --r-xl:28px;
@@ -32,6 +35,7 @@
   --md-tertiary-container:#6b3b00; --md-on-tertiary-container:#ffdcc2;
   --md-surface:#121318; --md-surface-low:#1a1b21; --md-surface-c:#1e1f25; --md-surface-high:#292a2f; --md-surface-highest:#34343a;
   --md-on-surface:#e3e2e9; --md-on-surface-variant:#c5c6d0; --md-outline:#8f9099; --md-outline-variant:#44464f;
+  --p-view:#1c2a47; --p-view-ink:#a9c1ff; --p-light:#3a2813; --p-light-ink:#ffb870; --p-forms:#173222; --p-forms-ink:#86dca6; --p-lines:#25262d; --p-lines-ink:#c3c4d6; --p-explain:#d7e2ff; --p-explain-ink:#0e2252;
   --md-error:#ffb4ab; --ray:#ff9a2e; --shadow:#3cc488; --point:#ff5964; color-scheme:dark}}
 :root[data-theme="dark"]{
   --md-primary:#b2c5ff; --md-on-primary:#002c70; --md-primary-container:#12428f; --md-on-primary-container:#dae2ff;
@@ -39,6 +43,7 @@
   --md-tertiary-container:#6b3b00; --md-on-tertiary-container:#ffdcc2;
   --md-surface:#121318; --md-surface-low:#1a1b21; --md-surface-c:#1e1f25; --md-surface-high:#292a2f; --md-surface-highest:#34343a;
   --md-on-surface:#e3e2e9; --md-on-surface-variant:#c5c6d0; --md-outline:#8f9099; --md-outline-variant:#44464f;
+  --p-view:#1c2a47; --p-view-ink:#a9c1ff; --p-light:#3a2813; --p-light-ink:#ffb870; --p-forms:#173222; --p-forms-ink:#86dca6; --p-lines:#25262d; --p-lines-ink:#c3c4d6; --p-explain:#d7e2ff; --p-explain-ink:#0e2252;
   --md-error:#ffb4ab; --ray:#ff9a2e; --shadow:#3cc488; --point:#ff5964; color-scheme:dark}
 *{box-sizing:border-box}
 [hidden]{display:none!important}
@@ -67,7 +72,8 @@ body{margin:0;background:var(--md-surface);color:var(--md-on-surface);font:400 1
 :focus-visible{outline:3px solid var(--md-primary);outline-offset:2px}
 /* layout */
 .app{flex:1;display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:16px;min-height:560px}
-.stage{position:relative;min-width:0;border-radius:var(--r-l);overflow:hidden;background:#fbfbf8;touch-action:none;box-shadow:var(--elev1)}
+.maincol{display:flex;flex-direction:column;gap:8px;min-width:0}
+.stage{flex:1;min-height:420px;position:relative;min-width:0;border-radius:var(--r-l);overflow:hidden;background:#fbfbf8;touch-action:none;box-shadow:var(--elev1)}
 .stage canvas{display:block;position:absolute;inset:0;width:100%;height:100%}
 #overlay{pointer-events:none}
 .readout{position:absolute;left:12px;bottom:12px;right:12px;display:flex;flex-wrap:wrap;gap:8px;pointer-events:none}
@@ -79,8 +85,17 @@ body{margin:0;background:var(--md-surface);color:var(--md-on-surface);font:400 1
 .card{background:var(--md-surface-low);border-radius:var(--r-m);padding:16px;display:grid;gap:12px;border:1px solid var(--md-outline-variant)}
 .card h2{font-size:14px;line-height:20px;font-weight:500;margin:0;display:flex;align-items:center;gap:8px;color:var(--md-on-surface)}
 .card h2 .msi{color:var(--md-primary)}
-.explain{background:var(--md-primary-container);color:var(--md-on-primary-container);border:0}
-.explain p{margin:0;font-size:14px;line-height:20px}
+.card.c-view{background:var(--p-view);border:0}.card.c-view h2 .msi{color:var(--p-view-ink)}
+.card.c-light{background:var(--p-light);border:0}.card.c-light h2 .msi{color:var(--p-light-ink)}
+.card.c-forms{background:var(--p-forms);border:0}.card.c-forms h2 .msi{color:var(--p-forms-ink)}
+.card.c-lines{background:var(--p-lines);border:0}.card.c-lines h2 .msi{color:var(--p-lines-ink)}
+.explain{background:transparent;border:0;display:flex;align-items:flex-start;gap:8px;padding:0 4px;color:var(--md-on-surface-variant)}
+.explain .msi{font-size:18px;width:18px;color:var(--md-primary);margin-top:1px}
+.explain p{margin:0;font-size:13px;line-height:19px;max-width:110ch}
+.field{display:grid;gap:4px;font-size:12px;color:var(--md-on-surface-variant);min-width:0}
+.field select{font:400 14px var(--font);height:40px;border-radius:4px;border:1px solid var(--md-outline);background:transparent;color:var(--md-on-surface);padding:0 10px}
+.field select option{background:var(--md-surface);color:var(--md-on-surface)}
+.fields{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr);gap:10px}
 /* segmented buttons */
 .seg{display:flex;border:1px solid var(--md-outline);border-radius:20px;overflow:hidden;height:40px}
 .seg button{flex:1;min-width:0;font:500 13px var(--font);color:var(--md-on-surface);background:transparent;border:0;border-left:1px solid var(--md-outline);display:inline-flex;align-items:center;justify-content:center;gap:6px;cursor:pointer;padding:0 8px}
@@ -119,7 +134,7 @@ label.chip:has(input:focus-visible){outline:3px solid var(--md-primary);outline-
 .snack{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--md-on-surface);color:var(--md-surface);padding:14px 16px;border-radius:4px;font-size:14px;box-shadow:var(--elev1);max-width:min(560px,calc(100% - 32px));z-index:20}
 @media (max-width:900px){
   .app{grid-template-columns:1fr}
-  .stage{height:62vh;min-height:360px}
+  .stage{flex:none;height:62vh;min-height:360px}
   .sheet{overflow:visible}
   .appbar p{display:none}
 }
@@ -140,6 +155,7 @@ label.chip:has(input:focus-visible){outline:3px solid var(--md-primary);outline-
 </header>
 
 <main class="app">
+  <div class="maincol">
   <div class="stage" id="stage">
     <canvas id="gl"></canvas>
     <canvas id="overlay"></canvas>
@@ -147,14 +163,12 @@ label.chip:has(input:focus-visible){outline:3px solid var(--md-primary);outline-
     <div class="readout" id="readout"></div>
     <div class="drop" id="drop" hidden>Drop a .glb, .gltf, .obj or .stl file</div>
   </div>
+  <div class="explain" aria-live="polite"><span class="msi" aria-hidden="true">info</span><p id="explain"></p></div>
+  </div>
 
   <aside class="sheet">
-    <section class="card explain" aria-live="polite">
-      <h2><span class="msi" aria-hidden="true">school</span>What you are seeing</h2>
-      <p id="explain"></p>
-    </section>
 
-    <section class="card" aria-labelledby="h-view">
+    <section class="card c-view" aria-labelledby="h-view">
       <h2 id="h-view"><span class="msi" aria-hidden="true">visibility</span>Perspective</h2>
       <div class="seg" role="group" aria-label="Perspective type">
         <button id="v1" aria-pressed="false"><span class="msi chk">check</span>1-point</button>
@@ -169,7 +183,7 @@ label.chip:has(input:focus-visible){outline:3px solid var(--md-primary);outline-
       <p class="note">The camera stays level, so verticals stay vertical. Angle 0° gives one-point perspective; any other angle gives two-point. Free orbit lets the camera tilt (three-point).</p>
     </section>
 
-    <section class="card" aria-labelledby="h-light">
+    <section class="card c-light" aria-labelledby="h-light">
       <h2 id="h-light"><span class="msi" aria-hidden="true">light_mode</span>Light</h2>
       <div class="seg" role="group" aria-label="Light type">
         <button id="lSun" aria-pressed="true"><span class="msi chk">check</span>Sun</button>
@@ -186,9 +200,13 @@ label.chip:has(input:focus-visible){outline:3px solid var(--md-primary);outline-
       </div>
     </section>
 
-    <section class="card" aria-labelledby="h-forms">
+    <section class="card c-forms" aria-labelledby="h-forms">
       <h2 id="h-forms"><span class="msi" aria-hidden="true">apartment</span>Forms</h2>
       <div class="chips" id="lib"></div>
+      <div class="fields">
+        <label class="field" for="selWin">Window style (double-hung)<select id="selWin"></select></label>
+        <label class="field" for="selWinN">Windows per wall<select id="selWinN"><option>1</option><option>2</option><option selected>3</option><option>4</option></select></label>
+      </div>
       <div class="row">
         <button class="btn tonal" id="bImport2"><span class="msi" aria-hidden="true">view_in_ar</span>Import 3D model</button>
       </div>
@@ -204,7 +222,7 @@ label.chip:has(input:focus-visible){outline:3px solid var(--md-primary);outline-
       </div>
     </section>
 
-    <section class="card" aria-labelledby="h-ov">
+    <section class="card c-lines" aria-labelledby="h-ov">
       <h2 id="h-ov"><span class="msi" aria-hidden="true">architecture</span>Construction lines</h2>
       <div class="chips">
         <label class="chip"><input type="checkbox" id="cHL" checked><span class="msi on">check</span><span class="swatch off" style="background:#1f5ac8"></span>Horizon &amp; VPs</label>
@@ -294,6 +312,115 @@ function extrudePlan(pts, h) { // pts in plan (x, z)
 function rectKeys(sx, sz, h, x = 0, z = 0) {
   return [[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([a, b]) => new V3(x + a * sx / 2, h, z + b * sz / 2));
 }
+// ---------------------------------------------------------------- double-hung window walls
+const WIN_STYLES = {
+  '2/1':     {label: '2 over 1', top: [2, 1], bot: [1, 1]},
+  '3/1':     {label: '3 over 1', top: [3, 1], bot: [1, 1]},
+  '4/1':     {label: '4 over 1', top: [2, 2], bot: [1, 1]},
+  '6/1':     {label: '6 over 1', top: [3, 2], bot: [1, 1]},
+  '2/2':     {label: '2 over 2', top: [2, 1], bot: [2, 1]},
+  '3/3':     {label: '3 over 3', top: [3, 1], bot: [3, 1]},
+  'prairie': {label: 'Prairie', prairie: true},
+  '4/4':     {label: '4 over 4', top: [2, 2], bot: [2, 2]},
+  'segment': {label: 'Segmental top', head: 'segment', top: [3, 2], bot: [3, 2]},
+  'round':   {label: 'Round top', head: 'round', top: [3, 1], bot: [3, 2], sunburst: true},
+};
+const WIN = {w: 1.0, y0: 0.85, h: 1.7, casing: 0.14, frame: 0.065, rise: 0.2};
+// outline of an opening offset by d (sides/top) and db (bottom), as points from bottom-left, up, over the head, down to bottom-right
+function winOutline(head, d, db, cx) {
+  const L = cx - WIN.w / 2 - d, R = cx + WIN.w / 2 + d, B = WIN.y0 - db, T = WIN.y0 + WIN.h + (head === 'flat' ? d : 0);
+  const pts = [[L, B], [L, T]];
+  if (head === 'round') {
+    const r = WIN.w / 2 + d;
+    for (let i = 1; i < 32; i++) { const a = Math.PI - i / 32 * Math.PI; pts.push([cx + r * Math.cos(a), T + r * Math.sin(a)]); }
+  } else if (head === 'segment') {
+    const half = WIN.w / 2 + d, s = WIN.rise + d * 0.3, Rr = (s * s + half * half) / (2 * s), cy = T + s - Rr;
+    const a0 = Math.atan2(T - cy, -half), a1 = Math.atan2(T - cy, half);
+    for (let i = 1; i < 24; i++) { const a = a0 + (a1 - a0) * i / 24; pts.push([cx + Rr * Math.cos(a), cy + Rr * Math.sin(a)]); }
+  }
+  pts.push([R, T], [R, B]);
+  return pts;
+}
+// height of the head curve at x (for muntins running up into an arched head)
+function headY(head, x, cx) {
+  const T = WIN.y0 + WIN.h, dx = x - cx;
+  if (head === 'round') { const r = WIN.w / 2 - WIN.frame; return T + Math.sqrt(Math.max(0, r * r - dx * dx)); }
+  if (head === 'segment') {
+    const half = WIN.w / 2, s = WIN.rise, Rr = (s * s + half * half) / (2 * s), cy = T + s - Rr;
+    return cy + Math.sqrt(Math.max(0, (Rr - WIN.frame) ** 2 - dx * dx));
+  }
+  return T - WIN.frame;
+}
+const V2 = a => new THREE.Vector2(a[0], a[1]);
+function slab(shape, z0, depth, mat) {
+  const g = new THREE.ExtrudeGeometry(shape, {depth, bevelEnabled: false, curveSegments: 1}); g.translate(0, 0, z0);
+  return new THREE.Mesh(g, mat);
+}
+function muntin(x0, y0, x1, y1, z) { // thin bar from (x0,y0) to (x1,y1)
+  const len = Math.hypot(x1 - x0, y1 - y0);
+  const m = new THREE.Mesh(new THREE.BoxGeometry(len, 0.028, 0.03), WHITE);
+  m.position.set((x0 + x1) / 2, (y0 + y1) / 2, z); m.rotation.z = Math.atan2(y1 - y0, x1 - x0);
+  return m;
+}
+function makeWindowWall(styleKey, n) {
+  const st = WIN_STYLES[styleKey] || WIN_STYLES['6/1'];
+  const head = st.head || 'flat';
+  const t = 0.4, H = 3.6, gap = 1.1, L = n * WIN.w + (n - 1) * gap + 2 * 1.0;
+  const front = t / 2;
+  const wall = new THREE.Shape([[-L / 2, 0], [L / 2, 0], [L / 2, H], [-L / 2, H]].map(V2));
+  const ms = [];
+  const centers = [...Array(n)].map((_, i) => -((n - 1) * (WIN.w + gap)) / 2 + i * (WIN.w + gap));
+  for (const cx of centers) {
+    const open = winOutline(head, 0, 0, cx);
+    wall.holes.push(new THREE.Path(open.map(V2)));
+    // glass + sash frame, recessed 0.2 m behind the wall face
+    const glass = new THREE.Mesh(new THREE.ShapeGeometry(new THREE.Shape(open.map(V2))), GLASS); glass.position.z = -0.02; ms.push(glass);
+    const sash = new THREE.Shape(open.map(V2)); sash.holes.push(new THREE.Path(winOutline(head, -WIN.frame, -WIN.frame, cx).map(V2)));
+    ms.push(slab(sash, -0.02, 0.06, WHITE));
+    const mid = WIN.y0 + WIN.h / 2;
+    ms.push(boxMesh(WIN.w, 0.07, 0.07, cx, mid - 0.035, 0.0));                 // meeting rail
+    ms.push(boxMesh(0.12, 0.02, 0.025, cx - 0.2, mid + 0.035, 0.0), boxMesh(0.12, 0.02, 0.025, cx + 0.2, mid + 0.035, 0.0)); // sash locks
+    // muntins
+    const xl = cx - WIN.w / 2 + WIN.frame, xr = cx + WIN.w / 2 - WIN.frame, z = 0.01;
+    const lowB = WIN.y0 + WIN.frame, lowT = mid - 0.035, upB = mid + 0.035;
+    const grid = ([c, r], yb, yt, arched) => {
+      for (let i = 1; i < c; i++) { const x = xl + (xr - xl) * i / c; ms.push(muntin(x, yb, x, arched ? headY(head, x, cx) : yt, z)); }
+      for (let j = 1; j < r; j++) { const y = yb + (yt - yb) * j / r; ms.push(muntin(xl, y, xr, y, z)); }
+    };
+    if (st.prairie) {
+      const o = 0.12;
+      for (const [yb, yt] of [[lowB, lowT], [upB, WIN.y0 + WIN.h - WIN.frame]]) {
+        ms.push(muntin(xl + o, yb, xl + o, yt, z), muntin(xr - o, yb, xr - o, yt, z));
+        ms.push(muntin(xl, yt - o, xr, yt - o, z));
+        if (yb === lowB) ms.push(muntin(xl, yb + o, xr, yb + o, z));
+      }
+    } else {
+      const upT = head === 'flat' ? WIN.y0 + WIN.h - WIN.frame : WIN.y0 + WIN.h;
+      grid(st.bot || [1, 1], lowB, lowT, false);
+      grid(st.top || [1, 1], upB, upT, head !== 'flat' && !st.sunburst);
+      if (head !== 'flat' && !st.sunburst) ms.push(muntin(xl, WIN.y0 + WIN.h, xr, WIN.y0 + WIN.h, z)); // spring line
+      if (st.sunburst) {
+        const T = WIN.y0 + WIN.h, r0 = 0.17, r1 = WIN.w / 2 - WIN.frame;
+        ms.push(muntin(xl, T, xr, T, z));
+        for (const a of [30, 60, 90, 120, 150]) { const k = a * Math.PI / 180; ms.push(muntin(cx + r0 * Math.cos(k), T + r0 * Math.sin(k), cx + r1 * Math.cos(k), T + r1 * Math.sin(k), z)); }
+        const ring = []; for (let i = 0; i <= 16; i++) { const k = i / 16 * Math.PI; ring.push([cx + (r0 + 0.014) * Math.cos(k), T + (r0 + 0.014) * Math.sin(k)]); }
+        for (let i = 16; i >= 0; i--) { const k = i / 16 * Math.PI; ring.push([cx + (r0 - 0.014) * Math.cos(k), T + (r0 - 0.014) * Math.sin(k)]); }
+        ms.push(slab(new THREE.Shape(ring.map(V2)), z - 0.015, 0.03, WHITE));
+      }
+    }
+    // casing trim standing proud of the wall, plus sill and apron
+    const outer = winOutline(head, WIN.casing, 0, cx), inner = winOutline(head, 0, 0, cx);
+    ms.push(slab(new THREE.Shape(outer.concat(inner.slice().reverse()).map(V2)), front, 0.05, WHITE));
+    ms.push(boxMesh(WIN.w + 2 * WIN.casing + 0.12, 0.06, 0.24, cx, WIN.y0 - 0.06, front + 0.1));
+    ms.push(boxMesh(WIN.w + 2 * WIN.casing - 0.04, 0.14, 0.03, cx, WIN.y0 - 0.2, front + 0.015));
+  }
+  const wg = new THREE.ExtrudeGeometry(wall, {depth: t, bevelEnabled: false, curveSegments: 1}); wg.translate(0, 0, -t / 2);
+  ms.unshift(new THREE.Mesh(wg, WHITE));
+  const keys = [...rectKeys(L, t, H)];
+  for (const cx of centers) { const s = (WIN.w + 2 * WIN.casing + 0.12) / 2; keys.push(new V3(cx - s, WIN.y0 - 0.0, front + 0.22), new V3(cx + s, WIN.y0, front + 0.22)); }
+  return {g: finish(new THREE.Group(), ms), keys, extra: {winStyle: styleKey, winN: n, label: `Window wall · ${st.label}`}};
+}
+
 const LIB = {
   cube: {label: 'Cube', make() { return {g: finish(new THREE.Group(), [boxMesh(2.6, 2.6, 2.6)]), keys: rectKeys(2.6, 2.6, 2.6)}; }},
   tower: {label: 'Tower', make() { return {g: finish(new THREE.Group(), [boxMesh(1.6, 5, 1.6)]), keys: rectKeys(1.6, 1.6, 5)}; }},
@@ -343,25 +470,7 @@ const LIB = {
     const m = new THREE.Mesh(new THREE.CylinderGeometry(1.1, 1.1, 3.2, 64), WHITE); m.position.y = 1.6;
     const ring = []; for (let i = 0; i < 32; i++) { const a = i / 32 * Math.PI * 2; ring.push(new V3(Math.cos(a) * 1.1, 3.2, Math.sin(a) * 1.1)); }
     return {g: finish(new THREE.Group(), [m]), keys: ring, extra: {noEdges: true}}; }},
-  windows: {label: 'Window wall', make() {
-    // wall 6 m x 3.6 m x 0.5 m; front face at z = +0.25 faces the default viewer
-    const s = new THREE.Shape([[-3, 0], [3, 0], [3, 3.6], [-3, 3.6]].map(a => new THREE.Vector2(...a)));
-    const rect = (x0, x1, y0, y1) => { const h = new THREE.Path(); h.moveTo(x0, y0); h.lineTo(x1, y0); h.lineTo(x1, y1); h.lineTo(x0, y1); h.lineTo(x0, y0); return h; };
-    const arch = new THREE.Path(); arch.moveTo(-0.6, 1.0); arch.lineTo(0.6, 1.0); arch.lineTo(0.6, 2.0); arch.absarc(0, 2.0, 0.6, 0, Math.PI, false); arch.lineTo(-0.6, 1.0);
-    s.holes.push(rect(-2.4, -1.2, 1.0, 2.5), arch, rect(1.2, 2.4, 1.0, 2.5));
-    const wg = new THREE.ExtrudeGeometry(s, {depth: 0.5, bevelEnabled: false, curveSegments: 24}); wg.translate(0, 0, -0.25);
-    const ms = [new THREE.Mesh(wg, WHITE)];
-    // recessed glass (0.3 m reveal)
-    const pane = (w, h, x, y) => { const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), GLASS); m.position.set(x, y, -0.05); return m; };
-    ms.push(pane(1.2, 1.5, -1.8, 1.75), pane(1.2, 1.5, 1.8, 1.75));
-    const as = new THREE.Shape(); as.moveTo(-0.6, 1.0); as.lineTo(0.6, 1.0); as.lineTo(0.6, 2.0); as.absarc(0, 2.0, 0.6, 0, Math.PI, false); as.lineTo(-0.6, 1.0);
-    const ap = new THREE.Mesh(new THREE.ShapeGeometry(as, 24), GLASS); ap.position.z = -0.05; ms.push(ap);
-    // mullion cross in the left window, sills, and a hood over the right window
-    ms.push(boxMesh(0.06, 1.5, 0.06, -1.8, 1.0, -0.02), boxMesh(1.2, 0.06, 0.06, -1.8, 1.72, -0.02));
-    ms.push(boxMesh(1.5, 0.08, 0.35, -1.8, 0.92, 0.3), boxMesh(1.5, 0.08, 0.35, 1.8, 0.92, 0.3), boxMesh(1.0, 0.08, 0.3, 0, 0.92, 0.3));
-    ms.push(boxMesh(1.7, 0.1, 0.7, 1.8, 2.65, 0.6));
-    return {g: finish(new THREE.Group(), ms),
-      keys: [...rectKeys(6, 0.5, 3.6), new V3(0.95, 2.75, 0.95), new V3(2.65, 2.75, 0.95)]}; }},
+  windows: {label: 'Window wall', make() { return makeWindowWall($('selWin').value, +$('selWinN').value); }},
   bay: {label: 'Bay window', make() {
     const wall = boxMesh(5.2, 3.6, 0.3, 0, 0, -0.15);
     const plan = [[-1.3, 0], [1.3, 0], [0.8, 0.9], [-0.8, 0.9]];
@@ -391,6 +500,7 @@ function select(g) {
   const sc = g ? g.scale.x : 1;
   $('sScale').value = sc; $('oScale').textContent = '×' + sc.toFixed(2); $('sScale').disabled = !g;
   $('bUp').hidden = !(g && g.userData.type === 'model');
+  if (g && g.userData.type === 'windows') { $('selWin').value = g.userData.winStyle; $('selWinN').value = g.userData.winN; }
   dirty = true;
 }
 const lib = $('lib');
@@ -750,6 +860,17 @@ for (const [id, key, fmt] of sliders) $(id).addEventListener('input', e => {
   dirty = true;
 });
 $('sLH').addEventListener('input', e => { S.pPos.y = +e.target.value; $('oLH').textContent = S.pPos.y.toFixed(1) + ' m'; dirty = true; });
+function rebuildWindows() {
+  if (!selected || selected.userData.type !== 'windows') return;
+  const old = selected, pos = old.position.clone(), ry = old.rotation.y, sc = old.scale.x;
+  removeForm(old);
+  const g = addForm('windows', pos.x, pos.z, ry); g.scale.setScalar(sc); select(g); dirty = true;
+}
+const winSel = $('selWin');
+for (const [k, v] of Object.entries(WIN_STYLES)) { const o = document.createElement('option'); o.value = k; o.textContent = v.label; winSel.appendChild(o); }
+winSel.value = '6/1';
+winSel.addEventListener('change', rebuildWindows);
+$('selWinN').addEventListener('change', rebuildWindows);
 $('sScale').addEventListener('input', e => { if (!selected) return; const v = +e.target.value; selected.scale.setScalar(v); $('oScale').textContent = '×' + v.toFixed(2); dirty = true; });
 $('sRot').addEventListener('input', e => { if (!selected) return; selected.rotation.y = THREE.MathUtils.degToRad(+e.target.value); $('oRot').textContent = e.target.value + '°'; dirty = true; });
 
