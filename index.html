@@ -1958,13 +1958,12 @@ function drawGizmos() {
     const ax = x1 + (x0 - x1) / l1 * rr, ay = y1 + (y0 - y1) / l1 * rr, bx = x1 + (x2 - x1) / l2 * rr, by = y1 + (y2 - y1) / l2 * rr;
     d += `${i ? 'L' : 'M'}${ax.toFixed(2)} ${ay.toFixed(2)}Q${x1.toFixed(2)} ${y1.toFixed(2)} ${bx.toFixed(2)} ${by.toFixed(2)}`;
   }
-  el('path', {d: d + 'Z', fill: 'rgba(255,255,255,.55)', stroke: B, 'stroke-width': 1.3}, gXf);
-  el('circle', {cx: r * .707, cy: -r * .707, r: 5.5, fill: '#fff', stroke: '#2f5bb7', 'stroke-width': 2}, gXf);
+  el('path', {d: d + 'Z', fill: 'var(--dial-hub)', stroke: 'var(--dial-bd)', 'stroke-width': 1.3}, gXf);   // orange tint, like the camera dial's hub
   const kx = Math.sin(a) * RING, ky = Math.cos(a) * RING;
   if (deg) el('path', {d: `M0 ${RING} A${RING} ${RING} 0 ${deg > 180 ? 1 : 0} 0 ${kx} ${ky}`, fill: 'none', stroke: B, 'stroke-width': 8, 'stroke-linecap': 'round'}, gXf);
   el('circle', {cx: kx, cy: ky, r: 12.5, fill: '#2f5bb7', stroke: '#fff', 'stroke-width': 2}, gXf);
   el('text', {x: kx, y: ky + 3.3, 'text-anchor': 'middle', 'font-size': 9.5, 'font-weight': 700, fill: '#fff', style: 'font-family:var(--font);pointer-events:none'}, gXf).textContent = Math.round(deg) + '°';
-  el('text', {x: 0, y: 3.5, 'text-anchor': 'middle', 'font-size': 10, 'font-weight': 700, fill: '#1d3f8a', style: 'font-family:var(--font);pointer-events:none'}, gXf).textContent = sc.toFixed(1);
+  el('text', {x: 0, y: 3.5, 'text-anchor': 'middle', 'font-size': 10, 'font-weight': 700, fill: '#3a1d02', style: 'font-family:var(--font);pointer-events:none'}, gXf).textContent = sc.toFixed(1);
   gXf.setAttribute('aria-valuetext', `rotation ${Math.round(deg)} degrees, size ${sc.toFixed(2)}, height ${g.position.y.toFixed(1)} metres`);
 }
 function setRot(deg) {
