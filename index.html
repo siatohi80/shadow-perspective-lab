@@ -184,8 +184,10 @@ input.sw:focus-visible{outline:3px solid var(--md-primary);outline-offset:2px}
 .c-light label.sl input[type=range]{accent-color:var(--ray)}
 .vsliders{background:transparent;padding:4px 0 2px}
 /* camera dial: a floating, see-through pie on the drawing + the same dial in the Perspective panel */
-.xf-float{position:absolute;z-index:4;right:12px;top:50%;transform:translateY(-50%);display:grid;justify-items:center;gap:6px;opacity:.9}
+.xf-float{position:absolute;z-index:4;left:12px;top:12px;display:grid;justify-items:center;gap:6px;opacity:.9}
 .xf-float:hover{opacity:1}
+.xf-float .xf-hide{position:absolute;right:-6px;top:-6px}
+.xf-float:hover .xf-hide,.xf-hide:focus-visible{opacity:1}
 .xf-float[hidden]{display:none}
 .xf-row{display:flex;align-items:center;gap:6px}
 .xf-h{display:grid;justify-items:center;padding:8px 4px;border-radius:16px;background:var(--dial-bg);border:1px solid var(--dial-bd);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
@@ -284,7 +286,7 @@ label.chip:has(input:focus-visible){outline:3px solid var(--md-primary);outline-
     <canvas id="gl"></canvas>
     <canvas id="overlay"></canvas>
     <div class="xf-float" id="xfFloat" hidden><div class="xf-row"><label class="xf-h" title="Lift the selected form off the ground (up only)"><span class="vbox" id="liftBox" role="slider" tabindex="0" aria-orientation="vertical" aria-label="Height above the ground" aria-valuemin="0" aria-valuemax="12"><span class="ltrack"><span class="lfill" id="liftFill"></span></span><span class="lknob" id="liftKnob"></span></span></label><svg id="gXf" viewBox="-72 -72 144 144" role="group" tabindex="0" aria-label="Rotate and size the selected form: drag the ring to rotate, drag inside to resize; arrow keys rotate, plus and minus resize"></svg></div>
-      <div class="xf-cap" hidden>Rotate <output id="oRot"></output><br>Size <output id="oScale"></output><br>Height <output id="oLift">0.0 m</output></div></div>
+      <button class="pie-hide xf-hide" id="xfHide" title="Hide the form dial (turn it back on in Perspective)" aria-label="Hide form dial"><span class="msi" aria-hidden="true">visibility_off</span></button><div class="xf-cap" hidden>Rotate <output id="oRot"></output><br>Size <output id="oScale"></output><br>Height <output id="oLift">0.0 m</output></div></div>
     <div class="pie-float" id="pieFloat" title="Camera dial: drag a slice to change it, drag the centre to move the dial"><svg id="pieSvg" viewBox="-130 -130 260 260" role="group" aria-label="Camera dial"></svg><button class="pie-hide" id="pieHide" title="Hide the camera dial (turn it back on in Perspective)" aria-label="Hide camera dial"><span class="msi" aria-hidden="true">visibility_off</span></button></div>
     <div class="readout" id="readout"></div>
     <div class="drop" id="drop" hidden>Drop a .glb, .gltf, .obj or .stl file</div>
@@ -879,7 +881,7 @@ function select(g) {
   const deg = g ? Math.round(((THREE.MathUtils.radToDeg(g.rotation.y) % 360) + 360) % 360) : 0;
   $('sRot').value = deg; $('oRot').textContent = deg + '°'; $('sRot').disabled = !g;
   const sc = g ? g.scale.x : 1;
-  $('sScale').value = sc; $('oScale').textContent = '×' + sc.toFixed(2); $('sScale').disabled = !g;
+  $('sScale').value = sc; $('oScale').textContent = sc.toFixed(1); $('sScale').disabled = !g;
   $('bUp').hidden = !(g && g.userData.type === 'model');
   if (g && g.userData.type === 'windows') { $('selWin').value = g.userData.winStyle; $('selWinN').value = g.userData.winN; }
   $('selBox').hidden = !g; $('bDel').disabled = !g; $('xfFloat').hidden = !g || !$('cXf').checked;
@@ -1939,13 +1941,22 @@ function drawGizmos() {
   el('circle', {cx: 0, cy: 0, r, fill: 'rgba(47,91,183,.10)', stroke: B, 'stroke-width': 1.4}, gXf);
   const fp = footprint(g), cx = g.position.x, cz = g.position.z;
   const R = Math.max(...fp.map(p => Math.hypot(p.x - cx, p.z - cz))) || 1, k = r * 0.78 / R;
-  el('polygon', {points: fp.map(p => `${(p.x - cx) * k},${(p.z - cz) * k}`).join(' '), fill: 'rgba(255,255,255,.55)', stroke: B, 'stroke-width': 1.3}, gXf);
+  // footprint with rounded corners
+  const P = fp.map(p => [(p.x - cx) * k, (p.z - cz) * k]), n = P.length;
+  let d = '';
+  for (let i = 0; i < n; i++) {
+    const [x0, y0] = P[(i - 1 + n) % n], [x1, y1] = P[i], [x2, y2] = P[(i + 1) % n];
+    const l1 = Math.hypot(x1 - x0, y1 - y0), l2 = Math.hypot(x2 - x1, y2 - y1), rr = Math.min(4, l1 / 2, l2 / 2);
+    const ax = x1 + (x0 - x1) / l1 * rr, ay = y1 + (y0 - y1) / l1 * rr, bx = x1 + (x2 - x1) / l2 * rr, by = y1 + (y2 - y1) / l2 * rr;
+    d += `${i ? 'L' : 'M'}${ax.toFixed(2)} ${ay.toFixed(2)}Q${x1.toFixed(2)} ${y1.toFixed(2)} ${bx.toFixed(2)} ${by.toFixed(2)}`;
+  }
+  el('path', {d: d + 'Z', fill: 'rgba(255,255,255,.55)', stroke: B, 'stroke-width': 1.3}, gXf);
   el('circle', {cx: r * .707, cy: -r * .707, r: 5.5, fill: '#fff', stroke: '#2f5bb7', 'stroke-width': 2}, gXf);
   const kx = Math.sin(a) * RING, ky = Math.cos(a) * RING;
   if (deg) el('path', {d: `M0 ${RING} A${RING} ${RING} 0 ${deg > 180 ? 1 : 0} 0 ${kx} ${ky}`, fill: 'none', stroke: B, 'stroke-width': 8, 'stroke-linecap': 'round'}, gXf);
   el('circle', {cx: kx, cy: ky, r: 12.5, fill: '#2f5bb7', stroke: '#fff', 'stroke-width': 2}, gXf);
   el('text', {x: kx, y: ky + 3.3, 'text-anchor': 'middle', 'font-size': 9.5, 'font-weight': 700, fill: '#fff', style: 'font-family:var(--font);pointer-events:none'}, gXf).textContent = Math.round(deg) + '°';
-  el('text', {x: 0, y: 3.5, 'text-anchor': 'middle', 'font-size': 10, 'font-weight': 700, fill: '#1d3f8a', style: 'font-family:var(--font);pointer-events:none'}, gXf).textContent = '×' + sc.toFixed(2);
+  el('text', {x: 0, y: 3.5, 'text-anchor': 'middle', 'font-size': 10, 'font-weight': 700, fill: '#1d3f8a', style: 'font-family:var(--font);pointer-events:none'}, gXf).textContent = sc.toFixed(1);
   gXf.setAttribute('aria-valuetext', `rotation ${Math.round(deg)} degrees, size ${sc.toFixed(2)}, height ${g.position.y.toFixed(1)} metres`);
 }
 function setRot(deg) {
@@ -2105,6 +2116,7 @@ liftBox.addEventListener('pointerdown', e => { liftDrag = true; liftBox.setPoint
 liftBox.addEventListener('pointermove', e => { if (liftDrag) liftFromPointer(e); });
 liftBox.addEventListener('pointerup', () => liftDrag = false);
 liftBox.addEventListener('keydown', e => { if (!selected) return; const d = {ArrowUp: .1, ArrowRight: .1, ArrowDown: -.1, ArrowLeft: -.1, PageUp: 1, PageDown: -1}[e.key]; if (d) { e.preventDefault(); setLift(selected.position.y + d); } });
+$('xfHide').addEventListener('click', () => { $('cXf').checked = false; $('xfFloat').hidden = true; });
 $('cXf').addEventListener('change', e => { $('xfFloat').hidden = !selected || !e.target.checked; dirty = true; });
 // Export: the drawing plus its construction overlay, as a PNG
 $('bShot').onclick = () => {
