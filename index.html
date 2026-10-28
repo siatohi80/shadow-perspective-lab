@@ -196,7 +196,8 @@ input.sw:focus-visible{outline:3px solid var(--md-primary);outline-offset:2px}
 .ltrack{position:absolute;left:50%;top:12px;bottom:12px;width:8px;transform:translateX(-50%);border-radius:4px;background:rgba(138,71,8,.20);overflow:hidden}
 .lfill{position:absolute;left:0;right:0;bottom:0;background:rgba(47,91,183,.62);border-radius:4px}
 .lknob{position:absolute;left:50%;width:26px;height:26px;margin:-13px 0 0 -13px;border-radius:50%;background:#2f5bb7;border:2px solid #fff;box-shadow:0 1px 2px rgba(0,0,0,.3);display:grid;place-items:center;font:700 9.5px/1 var(--font);color:#fff;letter-spacing:-.02em;pointer-events:none}
-.xf-float svg{width:132px;height:132px;touch-action:none;cursor:grab;border-radius:50%;-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
+.xf-float svg{width:169px;height:169px;touch-action:none;overflow:visible;pointer-events:none}
+.xf-float svg *{pointer-events:visiblePainted}
 .xf-float svg:focus,.xf-float svg:focus-visible,.xf-h .vbox:focus,.xf-h .vbox:focus-visible{outline:none}
 .xf-cap{font:500 11.5px/1.45 var(--font);color:#44464f;text-align:center;background:#ffffffee;border:1px solid #c5c6d0;border-radius:var(--r-s);padding:3px 10px}
 .xf-cap output{font:500 11.5px var(--mono);color:#1d2329}
@@ -284,7 +285,7 @@ label.chip:has(input:focus-visible){outline:3px solid var(--md-primary);outline-
   <div class="stage" id="stage">
     <canvas id="gl"></canvas>
     <canvas id="overlay"></canvas>
-    <div class="xf-float" id="xfFloat" hidden><div class="xf-row"><label class="xf-h" title="Lift the selected form off the ground (up only)"><span class="vbox" id="liftBox" role="slider" tabindex="0" aria-orientation="vertical" aria-label="Height above the ground" aria-valuemin="0" aria-valuemax="12"><span class="ltrack"><span class="lfill" id="liftFill"></span></span><span class="lknob" id="liftKnob"></span></span></label><svg id="gXf" viewBox="-72 -72 144 144" role="group" tabindex="0" aria-label="Rotate and size the selected form: drag the ring to rotate, drag inside to resize; arrow keys rotate, plus and minus resize"></svg></div>
+    <div class="xf-float" id="xfFloat" hidden><div class="xf-row"><svg id="gXf" viewBox="-92 -92 184 184" role="group" tabindex="0" aria-label="Rotate and size the selected form: drag the ring to rotate, drag inside to resize; arrow keys rotate, plus and minus resize"></svg></div>
       <button class="pie-hide xf-hide" id="xfHide" title="Hide the form dial (turn it back on in Perspective)" aria-label="Hide form dial"><span class="msi" aria-hidden="true">visibility_off</span></button><div class="xf-cap" hidden>Rotate <output id="oRot"></output><br>Size <output id="oScale"></output><br>Height <output id="oLift">0.0 m</output></div></div>
     <div class="pie-float" id="pieFloat" title="Camera dial: drag a slice to change it, drag the centre to move the dial"><svg id="pieSvg" viewBox="-130 -130 260 260" role="group" aria-label="Camera dial"></svg><button class="pie-hide" id="pieHide" title="Hide the camera dial (turn it back on in Perspective)" aria-label="Hide camera dial"><span class="msi" aria-hidden="true">visibility_off</span></button></div>
     <div class="readout" id="readout"></div>
@@ -1935,7 +1936,15 @@ function drawGizmos() {
   gXf.innerHTML = '';
   el('circle', {cx: 0, cy: 0, r: 64, fill: 'var(--dial-bg)', stroke: 'var(--dial-bd)', 'stroke-width': 1}, gXf);
   el('circle', {cx: 0, cy: 0, r: RING, fill: 'none', stroke: T, 'stroke-width': 8}, gXf);
+  const pa = deg => [LR * Math.cos(THREE.MathUtils.degToRad(deg)), LR * Math.sin(THREE.MathUtils.degToRad(deg))];
+  const arcL = (d0, d1) => { const [x0, y0] = pa(d0), [x1, y1] = pa(d1); return `M${x0.toFixed(2)} ${y0.toFixed(2)}A${LR} ${LR} 0 0 1 ${x1.toFixed(2)} ${y1.toFixed(2)}`; };
+  el('path', {d: arcL(LA0, LA1), fill: 'none', stroke: 'var(--dial-bg)', 'stroke-width': 22, 'stroke-linecap': 'round'}, gXf);
+  el('path', {d: arcL(LA0, LA1), fill: 'none', stroke: T, 'stroke-width': 8, 'stroke-linecap': 'round'}, gXf);
   if (!g) return;
+  const hf = Math.min(1, g.position.y / LIFT_MAX), ha = LA0 + (LA1 - LA0) * hf, [hx, hy] = pa(ha);
+  if (hf > 0.005) el('path', {d: arcL(LA0, ha), fill: 'none', stroke: B, 'stroke-width': 8, 'stroke-linecap': 'round'}, gXf);
+  el('circle', {cx: hx, cy: hy, r: 12.5, fill: '#2f5bb7', stroke: '#fff', 'stroke-width': 2}, gXf);
+  el('text', {x: hx, y: hy + 3.3, 'text-anchor': 'middle', 'font-size': 9.5, 'font-weight': 700, fill: '#fff', style: 'font-family:var(--font);pointer-events:none'}, gXf).textContent = g.position.y.toFixed(1);
   const deg = ((THREE.MathUtils.radToDeg(g.rotation.y) % 360) + 360) % 360, a = THREE.MathUtils.degToRad(deg), sc = g.scale.x, r = rOf(sc);
   el('circle', {cx: 0, cy: 0, r, fill: 'rgba(47,91,183,.10)', stroke: B, 'stroke-width': 1.4}, gXf);
   const fp = footprint(g), cx = g.position.x, cz = g.position.z;
@@ -1966,28 +1975,33 @@ function setScale(v) {
   if (!selected) return; v = Math.min(5, Math.max(0.2, v));
   selected.scale.setScalar(v); $('sScale').value = v; $('oScale').textContent = '×' + v.toFixed(2); dirty = true;
 }
-function gizPoint(e) { const r = gXf.getBoundingClientRect(); return {x: (e.clientX - r.left) / r.width * 132 - 66, y: (e.clientY - r.top) / r.height * 132 - 66}; }
+const GVB = 92;   // half the dial's viewBox
+function gizPoint(e) { const r = gXf.getBoundingClientRect(); return {x: (e.clientX - r.left) / r.width * 2 * GVB - GVB, y: (e.clientY - r.top) / r.height * 2 * GVB - GVB}; }
+const onLiftArc = p => { const d = Math.hypot(p.x, p.y), a = (THREE.MathUtils.radToDeg(Math.atan2(p.y, p.x)) + 360) % 360; return d > 68 && a > LA0 - 12 && a < LA1 + 12; };
 let gizDrag = null;
 gXf.addEventListener('pointerdown', e => {
   if (!selected) return;
   const p = gizPoint(e), d = Math.hypot(p.x, p.y);
-  gizDrag = d > (RING + rOf(selected.scale.x)) / 2 + 2 ? 'rot' : 'scale';   // ring vs. inside
+  gizDrag = onLiftArc(p) ? 'lift' : d > 72 ? null : d > (RING + rOf(selected.scale.x)) / 2 + 2 ? 'rot' : 'scale';   // height arc / ring / inside
+  if (!gizDrag) return;
   gXf.setPointerCapture(e.pointerId); gXf.style.cursor = 'grabbing'; gizMove(e);
 });
 gXf.addEventListener('pointermove', e => {
   if (gizDrag) return gizMove(e);
   if (!selected) return;
   const p = gizPoint(e), d = Math.hypot(p.x, p.y);
-  gXf.style.cursor = d > (RING + rOf(selected.scale.x)) / 2 + 2 ? 'grab' : 'nesw-resize';
+  gXf.style.cursor = onLiftArc(p) ? 'ns-resize' : d > 72 ? '' : d > (RING + rOf(selected.scale.x)) / 2 + 2 ? 'grab' : 'nesw-resize';
 });
 gXf.addEventListener('pointerup', () => { gizDrag = null; gXf.style.cursor = ''; });
 function gizMove(e) {
   const p = gizPoint(e);
+  if (gizDrag === 'lift') { const a = (THREE.MathUtils.radToDeg(Math.atan2(p.y, p.x)) + 360) % 360; setLift(Math.max(0, Math.min(1, (a - LA0) / (LA1 - LA0))) * LIFT_MAX); return; }
   if (gizDrag === 'rot') { let d = THREE.MathUtils.radToDeg(Math.atan2(p.x, p.y)); if (!e.shiftKey) d = Math.round(d / 5) * 5; setRot(d); }
   else setScale(vOf(Math.min(48, Math.hypot(p.x, p.y))));
 }
 gXf.addEventListener('keydown', e => {
   if (!selected) return;
+  if (e.key === 'PageUp' || e.key === 'PageDown') { e.preventDefault(); setLift(selected.position.y + (e.key === 'PageUp' ? 0.5 : -0.5)); return; }
   const d = +$('sRot').value, v = selected.scale.x;
   if (e.key === 'ArrowRight') { e.preventDefault(); setRot(d + (e.shiftKey ? 1 : 5)); }
   if (e.key === 'ArrowLeft') { e.preventDefault(); setRot(d - (e.shiftKey ? 1 : 5)); }
@@ -2101,20 +2115,10 @@ const fileIn = $('fileIn');
 $('bImport2').onclick = () => fileIn.click();
 // right-drag on the drawing walks / orbits: never show the browser's context menu there
 glc.addEventListener('contextmenu', e => e.preventDefault());
-// height (up only): a vertical track beside the form dial; drag, or arrow keys
-const LIFT_MAX = 12, liftBox = $('liftBox');
-function showLift(y) {
-  const f = Math.min(1, y / LIFT_MAX), H = liftBox.clientHeight - 24;
-  $('liftFill').style.height = (f * 100) + '%'; $('liftKnob').style.top = (12 + (1 - f) * H) + 'px'; $('liftKnob').textContent = y.toFixed(1);
-  $('oLift').textContent = y.toFixed(1) + ' m'; liftBox.setAttribute('aria-valuenow', y.toFixed(1));
-}
+// height (up only): an arc hugging the left side of the form dial (0 m at the bottom, LIFT_MAX at the top)
+const LIFT_MAX = 12, LA0 = 125, LA1 = 235, LR = 80;   // arc angles in degrees (SVG: 0 = right, 90 = down)
+function showLift(y) { $('oLift').textContent = y.toFixed(1) + ' m'; }
 function setLift(y) { if (!selected) return; selected.position.y = Math.max(0, Math.min(LIFT_MAX, Math.round(y * 20) / 20)); showLift(selected.position.y); dirty = true; }
-let liftDrag = false;
-const liftFromPointer = e => { const r = liftBox.getBoundingClientRect(); setLift((1 - (e.clientY - r.top - 12) / (r.height - 24)) * LIFT_MAX); };
-liftBox.addEventListener('pointerdown', e => { liftDrag = true; liftBox.setPointerCapture(e.pointerId); liftFromPointer(e); e.preventDefault(); liftBox.focus(); });
-liftBox.addEventListener('pointermove', e => { if (liftDrag) liftFromPointer(e); });
-liftBox.addEventListener('pointerup', () => liftDrag = false);
-liftBox.addEventListener('keydown', e => { if (!selected) return; const d = {ArrowUp: .1, ArrowRight: .1, ArrowDown: -.1, ArrowLeft: -.1, PageUp: 1, PageDown: -1}[e.key]; if (d) { e.preventDefault(); setLift(selected.position.y + d); } });
 $('xfHide').addEventListener('click', () => { $('cXf').checked = false; $('xfFloat').hidden = true; });
 $('cXf').addEventListener('change', e => { $('xfFloat').hidden = !selected || !e.target.checked; dirty = true; });
 // Export: the drawing plus its construction overlay, as a PNG
