@@ -1471,9 +1471,18 @@ function makeDial(svg, movable) {
       const rg = R1 - 9, arc = (b0, b1) => `M${(rg * Math.cos(b0)).toFixed(2)} ${(rg * Math.sin(b0)).toFixed(2)} A${rg} ${rg} 0 ${b1 - b0 > Math.PI ? 1 : 0} 1 ${(rg * Math.cos(b1)).toFixed(2)} ${(rg * Math.sin(b1)).toFixed(2)}`;
       el('path', {d: arc(ga0, ga1), fill: 'none', stroke: 'rgba(138,71,8,.20)', 'stroke-width': 10, 'stroke-linecap': 'round'}, g);
       el('path', {d: arc(ga0, ga0 + (ga1 - ga0) * Math.max(0.001, f)), fill: 'none', stroke: 'rgba(47,91,183,.62)', 'stroke-width': 10, 'stroke-linecap': 'round'}, g);
-      const tx = Math.cos(am) * 72, ty = Math.sin(am) * 72;   // keeps labels clear of the gauge ring
-      el('text', {x: tx, y: ty - 3, 'text-anchor': 'middle', 'font-size': 15, 'font-weight': 600}, g).textContent = P.label;
-      el('text', {class: 'val', x: tx, y: ty + 15, 'text-anchor': 'middle', 'font-size': 13.5}, g).textContent = P.fmt(pget(P.key));
+      // text follows the circle: upper slices read along the top arc, lower slices along a reversed arc so nothing is upside down
+      const lower = Math.sin(am) > 0.05;
+      const tArc = (r, id) => {
+        const b0 = lower ? a1 - 0.02 : a0 + 0.02, b1 = lower ? a0 + 0.02 : a1 - 0.02;
+        el('path', {id, d: `M${(r * Math.cos(b0)).toFixed(2)} ${(r * Math.sin(b0)).toFixed(2)} A${r} ${r} 0 0 ${lower ? 0 : 1} ${(r * Math.cos(b1)).toFixed(2)} ${(r * Math.sin(b1)).toFixed(2)}`, fill: 'none', stroke: 'none'}, g);
+      };
+      const uid = (svg.id || 'd') + '-' + P.key;
+      tArc(lower ? 70 : 88, uid + '-l'); tArc(lower ? 94 : 66, uid + '-v');
+      const tl = el('text', {'font-size': 15, 'font-weight': 600}, g);
+      el('textPath', {href: '#' + uid + '-l', startOffset: '50%', 'text-anchor': 'middle'}, tl).textContent = P.label;
+      const tv = el('text', {class: 'val', 'font-size': 13.5}, g);
+      el('textPath', {href: '#' + uid + '-v', startOffset: '50%', 'text-anchor': 'middle'}, tv).textContent = P.fmt(pget(P.key));
     });
     const live = pieDrag && pieDrag.P && pieDrag.dial === d;
     const hub = el('g', {'data-hub': '1', style: movable ? 'cursor:move' : ''}, svg);
