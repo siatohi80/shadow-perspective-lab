@@ -96,6 +96,21 @@ body{margin:0;background:var(--md-surface);color:var(--md-on-surface);font:400 1
 .field select{font:400 14px var(--font);height:40px;border-radius:4px;border:1px solid var(--md-outline);background:transparent;color:var(--md-on-surface);padding:0 10px}
 .field select option{background:var(--md-surface);color:var(--md-on-surface)}
 .sub{font:500 12px var(--font);letter-spacing:.06em;text-transform:uppercase;color:var(--p-forms-ink)}
+.toggles{display:grid;gap:2px;background:var(--md-surface);border-radius:var(--r-m);padding:4px}
+.tg{display:grid;grid-template-columns:44px minmax(0,1fr) auto;align-items:center;gap:10px;padding:8px 10px;border-radius:var(--r-s);cursor:pointer;font-size:14px;color:var(--md-on-surface)}
+.tg:hover{background:color-mix(in srgb,var(--md-on-surface) 6%,transparent)}
+.smp{width:40px;height:12px;display:block}
+input.sw{appearance:none;-webkit-appearance:none;width:44px;height:26px;border-radius:13px;background:var(--md-surface-highest);border:2px solid var(--md-outline);position:relative;cursor:pointer;margin:0;transition:background .15s,border-color .15s}
+input.sw::before{content:"";position:absolute;top:50%;left:4px;width:14px;height:14px;border-radius:50%;background:var(--md-outline);transform:translateY(-50%);transition:left .15s,width .15s,height .15s,background .15s}
+input.sw:checked{background:var(--md-primary);border-color:var(--md-primary)}
+input.sw:checked::before{left:21px;width:18px;height:18px;background:var(--md-on-primary)}
+input.sw:focus-visible{outline:3px solid var(--md-primary);outline-offset:2px}
+.lookrow{display:grid;grid-template-columns:76px minmax(0,1fr);align-items:center;gap:8px}
+.lookrow .lab{font-size:13px;color:var(--md-on-surface-variant)}
+.seg.sm{height:34px}.seg.sm button{font-size:12.5px}
+.swatches{display:flex;flex-wrap:wrap;gap:6px}
+.swb{width:24px;height:24px;border-radius:50%;border:2px solid var(--md-surface);box-shadow:0 0 0 1px var(--md-outline-variant);cursor:pointer;padding:0}
+.swb[aria-pressed="true"]{box-shadow:0 0 0 2px var(--md-primary)}
 .addrow{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:end}
 .selbox{display:grid;gap:10px;padding:12px;border-radius:var(--r-s);background:color-mix(in srgb,var(--md-surface) 70%,transparent)}
 .fields{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr);gap:10px}
@@ -212,10 +227,17 @@ label.chip:has(input:focus-visible){outline:3px solid var(--md-primary);outline-
       </div>
       <div class="row">
         <button class="btn tonal" id="bImport2" title="GLB, glTF, OBJ or STL. You can also drop a file on the drawing."><span class="msi" aria-hidden="true">view_in_ar</span>Import 3D model</button>
-        <label class="chip"><input type="checkbox" id="cClay" checked><span class="msi on">check</span><span class="msi off">palette</span>Clay look</label>
+        <label class="chip" title="Imported models are shown plain white (or pastel) to match the drawing. Turn this on to keep the model's own colours and textures."><input type="checkbox" id="cKeep"><span class="msi on">check</span><span class="msi off">palette</span>Keep model's colours</label>
+      </div>
+      <div class="lookrow"><span class="lab">Surface</span>
+        <div class="seg sm" role="group" aria-label="Surface look">
+          <button id="lkWhite" aria-pressed="true"><span class="msi chk">check</span>White</button>
+          <button id="lkPastel" aria-pressed="false"><span class="msi chk">check</span>Pastel</button>
+        </div>
       </div>
       <div class="selbox" id="selBox" hidden>
       <div class="sel" id="selName">No form selected</div>
+      <div class="swatches" id="swatches" hidden></div>
       <label class="sl" for="sRot">Rotate<input id="sRot" type="range" min="0" max="359" step="1" value="0"><output id="oRot"></output></label>
       <label class="sl" for="sScale">Size<input id="sScale" type="range" min="0.2" max="3" step="0.05" value="1"><output id="oScale"></output></label>
       <div class="row">
@@ -228,15 +250,19 @@ label.chip:has(input:focus-visible){outline:3px solid var(--md-primary);outline-
 
     <section class="card c-lines" aria-labelledby="h-ov">
       <h2 id="h-ov"><span class="msi" aria-hidden="true">architecture</span>Construction lines</h2>
-      <div class="chips">
-        <label class="chip"><input type="checkbox" id="cHL" checked><span class="msi on">check</span><span class="swatch off" style="background:#1f5ac8"></span>Horizon &amp; VPs</label>
-        <label class="chip"><input type="checkbox" id="cEdges" checked><span class="msi on">check</span><span class="swatch off" style="background:#8fb0ea"></span>Edges to VPs</label>
-        <label class="chip"><input type="checkbox" id="cRays" checked><span class="msi on">check</span><span class="swatch off" style="background:var(--ray)"></span>Light rays</label>
-        <label class="chip"><input type="checkbox" id="cShad" checked><span class="msi on">check</span><span class="swatch off" style="background:var(--shadow)"></span>Shadow lines</label>
-        <label class="chip"><input type="checkbox" id="cAll"><span class="msi on">check</span><span class="msi off">select_all</span>All forms</label>
-        <label class="chip"><input type="checkbox" id="cGrid"><span class="msi on">check</span><span class="msi off">grid_on</span>Ground grid</label>
+      <div class="toggles">
+        <label class="tg" for="cHL"><svg class="smp" viewBox="0 0 40 12" aria-hidden="true"><line x1="2" y1="6" x2="38" y2="6" stroke="#1f5ac8" stroke-width="2.5"/><circle cx="8" cy="6" r="3.2" fill="#1f5ac8"/><circle cx="32" cy="6" r="3.2" fill="#1f5ac8"/></svg><span>Horizon &amp; vanishing points</span><input type="checkbox" class="sw" id="cHL" checked></label>
+        <label class="tg" for="cEdges"><svg class="smp" viewBox="0 0 40 12" aria-hidden="true"><line x1="2" y1="6" x2="38" y2="6" stroke="#8fb0ea" stroke-width="2" stroke-linecap="round" stroke-dasharray="4 3"/></svg><span>Edges to vanishing points</span><input type="checkbox" class="sw" id="cEdges" checked></label>
+        <label class="tg" for="cRays"><svg class="smp" viewBox="0 0 40 12" aria-hidden="true"><line x1="2" y1="6" x2="38" y2="6" stroke="#e07400" stroke-width="2.5" stroke-linecap="round"/></svg><span>Light rays</span><input type="checkbox" class="sw" id="cRays" checked></label>
+        <label class="tg" for="cShad"><svg class="smp" viewBox="0 0 40 12" aria-hidden="true"><line x1="2" y1="6" x2="30" y2="6" stroke="#13935a" stroke-width="2.5" stroke-linecap="round"/><circle cx="33" cy="6" r="3.4" fill="#d21f2c" stroke="#fff" stroke-width="1"/></svg><span>Shadow lines &amp; points</span><input type="checkbox" class="sw" id="cShad" checked></label>
+        <label class="tg" for="cGrid"><svg class="smp" viewBox="0 0 40 12" aria-hidden="true"><path d="M2 3H38M2 9H38M10 1V11M20 1V11M30 1V11" stroke="#b9b3a8" stroke-width="1.2"/></svg><span>Ground grid</span><input type="checkbox" class="sw" id="cGrid"></label>
       </div>
-      <p class="note">Each shadow point (red) is where a light ray (orange) through a top corner meets the shadow line (green) through that corner's foot.</p>
+      <div class="lookrow"><span class="lab">Construct</span>
+        <div class="seg sm" role="group" aria-label="Construct shadows for">
+          <button id="scSel" aria-pressed="true"><span class="msi chk">check</span>Selected</button>
+          <button id="scAll" aria-pressed="false"><span class="msi chk">check</span>All forms</button>
+        </div>
+      </div>
     </section>
   </aside>
 </main>
@@ -293,6 +319,40 @@ const grid = new THREE.GridHelper(60, 60, 0xb9b3a8, 0xd4cfc6); grid.position.y =
 
 const WHITE = new THREE.MeshLambertMaterial({color: 0xf6f6f2});
 // glass lets light through: see-through, and never casts a shadow (only frames, rails and muntins do)
+// ---- surface looks: plain white, or rough pastel (chalky grain texture tinted per form)
+const PASTELS = [0xf2b5ae, 0xf6cf9f, 0xf1e19c, 0xc5dfa9, 0xa6d6c8, 0xaac6e6, 0xc6b6e4, 0xe8b4cf, 0xd9c3a5, 0xb9d3d9];
+function makeGrain() {
+  const c = document.createElement('canvas'); c.width = c.height = 512; const x = c.getContext('2d');
+  x.fillStyle = '#fff'; x.fillRect(0, 0, 512, 512);
+  // pastel strokes: many short, slightly angled dabs of lighter/darker value
+  for (let i = 0; i < 14000; i++) {
+    const v = 150 + Math.random() * 90 | 0, a = 0.16 + Math.random() * 0.3;
+    x.strokeStyle = `rgba(${v},${v},${v},${a})`; x.lineWidth = 1 + Math.random() * 2.2; x.lineCap = 'round';
+    const px = Math.random() * 512, py = Math.random() * 512, ang = -0.7 + (Math.random() - 0.5) * 0.5, len = 6 + Math.random() * 22;
+    x.beginPath(); x.moveTo(px, py); x.lineTo(px + Math.cos(ang) * len, py + Math.sin(ang) * len); x.stroke();
+  }
+  // paper tooth: tiny bright specks where the chalk skipped
+  for (let i = 0; i < 9000; i++) { x.fillStyle = `rgba(255,255,255,${0.45 + Math.random() * 0.55})`; x.fillRect(Math.random() * 512, Math.random() * 512, 1 + Math.random() * 1.5, 1 + Math.random() * 1.5); }
+  const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(1.6, 1.6); t.anisotropy = 4;
+  return t;
+}
+const GRAIN = makeGrain();
+const pastelMats = new Map();
+function pastelMat(hex) {
+  if (!pastelMats.has(hex)) {
+    // pastel = light values: part of the colour glows on its own, so faces in shade stay soft instead of muddy
+    const col = new THREE.Color(hex);
+    pastelMats.set(hex, new THREE.MeshLambertMaterial({color: col, map: GRAIN, emissive: col.clone().multiplyScalar(0.32), emissiveMap: GRAIN}));
+  }
+  return pastelMats.get(hex);
+}
+let pastelNext = 0;
+function paint(g, hex) {   // hex = null -> plain white
+  const m = hex == null ? WHITE : pastelMat(hex);
+  g.traverse(o => { if (o.isMesh && o.material !== GLASS && !o.userData.ownMat && o !== bulb) o.material = m; });
+  g.userData.color = hex;
+}
+function applyLook(g) { if (S.look === 'pastel') paint(g, PASTELS[pastelNext++ % PASTELS.length]); }
 const GLASS = new THREE.MeshLambertMaterial({color: 0x9fb4c8, side: THREE.DoubleSide, transparent: true, opacity: 0.28, depthWrite: false});
 const EDGE = new THREE.LineBasicMaterial({color: 0x1e1e1e});
 
@@ -696,7 +756,7 @@ function addForm(type, x, z, rot = 0) {
   const {g, keys, extra} = LIB[type].make();
   g.position.set(x, 0, z); g.rotation.y = rot;
   g.userData = Object.assign({type, keys}, extra || {});
-  scene.add(g); forms.push(g); select(g); return g;
+  scene.add(g); forms.push(g); applyLook(g); select(g); return g;
 }
 function removeForm(g) { scene.remove(g); forms = forms.filter(f => f !== g); if (selected === g) select(forms[forms.length - 1] || null); }
 function select(g) {
@@ -709,6 +769,7 @@ function select(g) {
   $('bUp').hidden = !(g && g.userData.type === 'model');
   if (g && g.userData.type === 'windows') { $('selWin').value = g.userData.winStyle; $('selWinN').value = g.userData.winN; }
   $('selBox').hidden = !g;
+  if (typeof markSwatch === 'function') { $('swatches').hidden = S.look !== 'pastel' || !g; markSwatch(); }
   showWinFields();
   dirty = true;
 }
@@ -734,7 +795,7 @@ $('bAdd').onclick = () => {
 
 // ---------------------------------------------------------------- state
 const S = {
-  view: '2pt', az: 35, eye: 4, dist: 17, lens: 24, shift: 0.12, tilt: 25,
+  look: 'white', view: '2pt', az: 35, eye: 4, dist: 17, lens: 24, shift: 0.12, tilt: 25,
   light: 'sun', sunAz: 0, sunEl: 35, pPos: new V3(-3, 7, 5),
   showHL: true, showEdges: true, showRays: true, showShad: true, all: false,
 };
@@ -1325,7 +1386,25 @@ function placeRel(kind) { // presets relative to the current viewer
 
 $('bDel').onclick = () => { if (selected) removeForm(selected); dirty = true; };
 $('bClear').onclick = () => { [...forms].forEach(removeForm); dirty = true; };
-const checks = {cHL: 'showHL', cEdges: 'showEdges', cRays: 'showRays', cShad: 'showShad', cAll: 'all'};
+const checks = {cHL: 'showHL', cEdges: 'showEdges', cRays: 'showRays', cShad: 'showShad'};
+function setScope(all) { S.all = all; $('scSel').setAttribute('aria-pressed', !all); $('scAll').setAttribute('aria-pressed', all); dirty = true; }
+$('scSel').onclick = () => setScope(false); $('scAll').onclick = () => setScope(true);
+// surface look + colour swatches
+function setLook(look) {
+  S.look = look; $('lkWhite').setAttribute('aria-pressed', look === 'white'); $('lkPastel').setAttribute('aria-pressed', look === 'pastel');
+  pastelNext = 0;
+  forms.forEach(g => look === 'pastel' ? paint(g, PASTELS[pastelNext++ % PASTELS.length]) : paint(g, null));
+  $('swatches').hidden = look !== 'pastel' || !selected; markSwatch(); dirty = true;
+}
+$('lkWhite').onclick = () => setLook('white'); $('lkPastel').onclick = () => setLook('pastel');
+const sw = $('swatches');
+for (const hex of PASTELS) {
+  const b = document.createElement('button'); b.className = 'swb'; b.style.background = '#' + hex.toString(16).padStart(6, '0');
+  b.dataset.hex = hex; b.setAttribute('aria-label', 'Colour #' + hex.toString(16)); b.title = 'Paint the selected form';
+  b.onclick = () => { if (selected) { paint(selected, hex); markSwatch(); dirty = true; } };
+  sw.appendChild(b);
+}
+function markSwatch() { for (const b of sw.children) b.setAttribute('aria-pressed', !!selected && +b.dataset.hex === selected.userData.color); }
 for (const [id, key] of Object.entries(checks)) $(id).addEventListener('change', e => { S[key] = e.target.checked; dirty = true; });
 $('cGrid').addEventListener('change', e => { grid.visible = e.target.checked; dirty = true; });
 
@@ -1333,7 +1412,7 @@ $('cGrid').addEventListener('change', e => { grid.visible = e.target.checked; di
 function snack(msg) { const s = $('snack'); s.textContent = msg; s.hidden = false; clearTimeout(snack.t); snack.t = setTimeout(() => s.hidden = true, 4200); }
 function wrapModel(obj, name, zUp) {
   if (zUp) obj.rotation.x = -Math.PI / 2;
-  const clay = $('cClay').checked;
+  const clay = !$('cKeep').checked;
   let tris = 0;
   obj.updateMatrixWorld(true);
   obj.traverse(o => { if (o.isMesh) { const g = o.geometry; tris += (g.index ? g.index.count : g.attributes.position.count) / 3; } });
@@ -1343,6 +1422,7 @@ function wrapModel(obj, name, zUp) {
     o.castShadow = true; o.receiveShadow = true;
     if (clay) o.material = WHITE;
     else {
+      o.userData.ownMat = true;
       const ms = Array.isArray(o.material) ? o.material : [o.material];
       ms.forEach(m => { if (m) m.side = THREE.FrontSide; });
     }
@@ -1368,7 +1448,7 @@ function wrapModel(obj, name, zUp) {
   const t = viewTarget();
   g.position.set(t.x + (Math.random() - 0.5) * 2, 0, t.z + (Math.random() - 0.5) * 2);
   g.userData = {type: 'model', keys, label: name, tris: Math.round(tris)};
-  scene.add(g); forms.push(g); select(g);
+  scene.add(g); forms.push(g); applyLook(g); select(g);
   if (!forms.slice(0, -1).length) target = viewTarget();
   dirty = true;
   snack(`Imported ${name}` + (k !== 1 ? ` (rescaled to ${box.max.y.toFixed(1)} m tall)` : '') + (tris >= 250000 ? ' · outlines skipped for a heavy mesh' : ''));
