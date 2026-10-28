@@ -162,6 +162,8 @@ input.sw:focus-visible{outline:3px solid var(--md-primary);outline-offset:2px}
 .fsel-menu button[role=option][aria-selected="true"]{background:var(--md-secondary-container);color:var(--md-on-secondary-container);font-weight:600}
 .fsel-menu button[role=option][aria-selected="true"]::before{content:"";position:absolute;left:6px;top:6px;bottom:6px;width:4px;border-radius:2px;background:var(--md-primary)}
 .fsel-menu button[role=option][aria-selected="true"]::after{content:"✓";position:absolute;right:14px;font-weight:700;color:var(--md-primary)}
+.importrow{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;background:var(--md-surface);border-radius:var(--r-m);padding:6px 6px 6px 8px}
+.tg.tg-inline{display:flex;flex:1 1 100%;justify-content:space-between;grid-template-columns:none;gap:10px;padding:8px 10px;font-size:14px}
 .addrow{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:end}
 .selbox{display:grid;gap:10px;padding:12px;border-radius:var(--r-s);background:color-mix(in srgb,var(--md-surface) 70%,transparent)}
 .fields{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr);gap:10px}
@@ -278,9 +280,9 @@ label.chip:has(input:focus-visible){outline:3px solid var(--md-primary);outline-
         <label class="field" for="selWin">Window style<select id="selWin"></select></label>
         <label class="field" for="selWinN">How many<select id="selWinN"><option>1</option><option>2</option><option selected>3</option><option>4</option></select></label>
       </div>
-      <div class="row">
+      <div class="importrow">
         <button class="btn tonal" id="bImport2" title="GLB, glTF, OBJ or STL. You can also drop a file on the drawing."><span class="msi" aria-hidden="true">view_in_ar</span>Import 3D model</button>
-        <label class="chip" title="Imported models are shown plain white (or pastel) to match the drawing. Turn this on to keep the model's own colours and textures."><input type="checkbox" id="cKeep"><span class="msi on">check</span><span class="msi off">palette</span>Keep model's colours</label>
+        <label class="tg tg-inline" for="cKeep" title="Off: imported models are drawn white (or pastel) to match the drawing. On: keep the model's own colours and textures."><span>Keep model's colours</span><input type="checkbox" class="sw" id="cKeep"></label>
       </div>
       <div class="lookrow"><span class="lab">Surface</span>
         <div class="seg sm" role="group" aria-label="Surface look">
