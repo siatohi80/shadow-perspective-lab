@@ -1,0 +1,882 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="description" content="Interactive lab for teaching cast shadows in one- and two-point perspective.">
+<title>Shadow Perspective Lab</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto+Flex:opsz,wght@8..144,400;8..144,500;8..144,600&family=Roboto+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,400,0..1,0&display=block">
+<style>
+/* Material 3 (baseline tokens from a blue seed). Layout: top app bar; the drawing stage in a surface card;
+   a side sheet of settings cards (stacks under the stage on phones).
+   Construction colours match the Blender plates: blue = horizon/VPs, orange = rays, green = shadow lines, red = shadow points. */
+:root{
+  --md-primary:#2f5bb7; --md-on-primary:#ffffff; --md-primary-container:#dae2ff; --md-on-primary-container:#001946;
+  --md-secondary-container:#dce2f9; --md-on-secondary-container:#141b2c;
+  --md-tertiary-container:#ffdcc2; --md-on-tertiary-container:#2e1500;
+  --md-surface:#faf8ff; --md-surface-low:#f4f3fa; --md-surface-c:#eeedf4; --md-surface-high:#e8e7ef; --md-surface-highest:#e3e2e9;
+  --md-on-surface:#1a1b21; --md-on-surface-variant:#44464f; --md-outline:#757780; --md-outline-variant:#c5c6d0;
+  --md-error:#ba1a1a;
+  --ray:#e07400; --shadow:#13935a; --point:#d21f2c;
+  --font:"Roboto Flex","Roboto",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"Roboto Mono",ui-monospace,Menlo,monospace;
+  --r-s:8px; --r-m:12px; --r-l:16px; --r-xl:28px;
+  --elev1:0 1px 2px rgba(0,0,0,.3),0 1px 3px 1px rgba(0,0,0,.15);
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --md-primary:#b2c5ff; --md-on-primary:#002c70; --md-primary-container:#12428f; --md-on-primary-container:#dae2ff;
+  --md-secondary-container:#3f4759; --md-on-secondary-container:#dce2f9;
+  --md-tertiary-container:#6b3b00; --md-on-tertiary-container:#ffdcc2;
+  --md-surface:#121318; --md-surface-low:#1a1b21; --md-surface-c:#1e1f25; --md-surface-high:#292a2f; --md-surface-highest:#34343a;
+  --md-on-surface:#e3e2e9; --md-on-surface-variant:#c5c6d0; --md-outline:#8f9099; --md-outline-variant:#44464f;
+  --md-error:#ffb4ab; --ray:#ff9a2e; --shadow:#3cc488; --point:#ff5964; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --md-primary:#b2c5ff; --md-on-primary:#002c70; --md-primary-container:#12428f; --md-on-primary-container:#dae2ff;
+  --md-secondary-container:#3f4759; --md-on-secondary-container:#dce2f9;
+  --md-tertiary-container:#6b3b00; --md-on-tertiary-container:#ffdcc2;
+  --md-surface:#121318; --md-surface-low:#1a1b21; --md-surface-c:#1e1f25; --md-surface-high:#292a2f; --md-surface-highest:#34343a;
+  --md-on-surface:#e3e2e9; --md-on-surface-variant:#c5c6d0; --md-outline:#8f9099; --md-outline-variant:#44464f;
+  --md-error:#ffb4ab; --ray:#ff9a2e; --shadow:#3cc488; --point:#ff5964; color-scheme:dark}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+#plan{letter-spacing:0}
+html,body{height:100%}
+body{margin:0;background:var(--md-surface);color:var(--md-on-surface);font:400 14px/1.43 var(--font);letter-spacing:.016em;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:0 16px;
+  display:flex;flex-direction:column}
+.msi{font-family:"Material Symbols Rounded";font-weight:normal;font-style:normal;font-size:20px;line-height:1;display:inline-block;
+  letter-spacing:normal;text-transform:none;white-space:nowrap;direction:ltr;-webkit-font-smoothing:antialiased;font-variation-settings:'FILL' 0,'wght' 400,'opsz' 20;width:20px;overflow:hidden;flex:none}
+/* top app bar */
+.appbar{display:flex;align-items:center;gap:12px;min-height:64px;padding-block:8px}
+.appbar .logo{width:40px;height:40px;border-radius:var(--r-m);background:var(--md-primary-container);color:var(--md-on-primary-container);display:grid;place-items:center}
+.appbar h1{font-size:22px;line-height:28px;font-weight:500;margin:0;letter-spacing:0}
+.appbar p{margin:0;color:var(--md-on-surface-variant);font-size:13px}
+.appbar .titles{min-width:0;flex:1}
+/* buttons */
+.btn{font:500 14px/20px var(--font);letter-spacing:.007em;display:inline-flex;align-items:center;gap:8px;height:40px;padding:0 20px 0 16px;border-radius:20px;border:0;cursor:pointer;position:relative;overflow:hidden;color:var(--md-primary);background:transparent;white-space:nowrap}
+.btn::after{content:"";position:absolute;inset:0;background:currentColor;opacity:0;transition:opacity .15s}
+.btn:hover::after{opacity:.08}.btn:active::after{opacity:.12}
+.btn.filled{background:var(--md-primary);color:var(--md-on-primary)}
+.btn.tonal{background:var(--md-secondary-container);color:var(--md-on-secondary-container)}
+.btn.outlined{border:1px solid var(--md-outline);color:var(--md-primary)}
+.btn.danger{color:var(--md-error)}
+.btn:disabled{opacity:.38;cursor:default}
+:focus-visible{outline:3px solid var(--md-primary);outline-offset:2px}
+/* layout */
+.app{flex:1;display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:16px;min-height:560px}
+.stage{position:relative;min-width:0;border-radius:var(--r-l);overflow:hidden;background:#fbfbf8;touch-action:none;box-shadow:var(--elev1)}
+.stage canvas{display:block;position:absolute;inset:0;width:100%;height:100%}
+#overlay{pointer-events:none}
+.readout{position:absolute;left:12px;bottom:12px;right:12px;display:flex;flex-wrap:wrap;gap:8px;pointer-events:none}
+.badge{font:500 12px/16px var(--font);background:#dae2ff;color:#001946;border-radius:var(--r-s);padding:6px 10px}
+.badge.alt{background:#ffffffee;color:#44464f;border:1px solid #c5c6d0}
+.hint{position:absolute;right:12px;top:12px;font-size:12px;color:#44464f;background:#ffffffe6;padding:6px 10px;border-radius:var(--r-s);pointer-events:none;max-width:60%}
+.drop{position:absolute;inset:0;display:grid;place-items:center;background:rgba(47,91,183,.12);border:3px dashed #2f5bb7;border-radius:var(--r-l);color:#001946;font:500 18px var(--font);pointer-events:none}
+.sheet{min-width:0;overflow:auto;display:flex;flex-direction:column;gap:12px;padding-bottom:4px}
+.card{background:var(--md-surface-low);border-radius:var(--r-m);padding:16px;display:grid;gap:12px;border:1px solid var(--md-outline-variant)}
+.card h2{font-size:14px;line-height:20px;font-weight:500;margin:0;display:flex;align-items:center;gap:8px;color:var(--md-on-surface)}
+.card h2 .msi{color:var(--md-primary)}
+.explain{background:var(--md-primary-container);color:var(--md-on-primary-container);border:0}
+.explain p{margin:0;font-size:14px;line-height:20px}
+/* segmented buttons */
+.seg{display:flex;border:1px solid var(--md-outline);border-radius:20px;overflow:hidden;height:40px}
+.seg button{flex:1;min-width:0;font:500 13px var(--font);color:var(--md-on-surface);background:transparent;border:0;border-left:1px solid var(--md-outline);display:inline-flex;align-items:center;justify-content:center;gap:6px;cursor:pointer;padding:0 8px}
+.seg button:first-child{border-left:0}
+.seg button[aria-pressed="true"]{background:var(--md-secondary-container);color:var(--md-on-secondary-container)}
+.seg button .chk{display:none}
+.seg button[aria-pressed="true"] .chk{display:inline-block}
+.seg button[aria-pressed="true"] .ico{display:none}
+/* sliders */
+label.sl{display:grid;grid-template-columns:104px minmax(0,1fr) 58px;align-items:center;gap:8px;font-size:13px;color:var(--md-on-surface-variant)}
+label.sl output{font:500 12px var(--mono);text-align:right;font-variant-numeric:tabular-nums;color:var(--md-on-surface)}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:20px;background:transparent;margin:0}
+input[type=range]::-webkit-slider-runnable-track{height:4px;border-radius:2px;background:var(--md-secondary-container)}
+input[type=range]::-moz-range-track{height:4px;border-radius:2px;background:var(--md-secondary-container)}
+input[type=range]::-moz-range-progress{height:4px;border-radius:2px;background:var(--md-primary)}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;height:18px;border-radius:50%;background:var(--md-primary);margin-top:-7px;border:0}
+input[type=range]::-moz-range-thumb{width:18px;height:18px;border-radius:50%;background:var(--md-primary);border:0}
+input[type=range]:disabled{opacity:.38}
+/* chips */
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{font:500 13px/18px var(--font);height:32px;display:inline-flex;align-items:center;gap:6px;padding:0 14px 0 8px;border-radius:var(--r-s);border:1px solid var(--md-outline);background:transparent;color:var(--md-on-surface);cursor:pointer;position:relative;overflow:hidden;user-select:none}
+.chip::after{content:"";position:absolute;inset:0;background:currentColor;opacity:0;transition:opacity .15s}
+.chip:hover::after{opacity:.08}
+.chip .msi{font-size:18px;width:18px;color:var(--md-primary)}
+label.chip input{position:absolute;opacity:0;pointer-events:none}
+label.chip:has(input:checked){background:var(--md-secondary-container);color:var(--md-on-secondary-container);border-color:transparent}
+label.chip .on{display:none}
+label.chip:has(input:checked) .on{display:inline-block}
+label.chip:has(input:checked) .off{display:none}
+label.chip:has(input:focus-visible){outline:3px solid var(--md-primary);outline-offset:2px}
+.swatch{width:14px;height:4px;border-radius:2px;flex:none}
+#plan{width:100%;aspect-ratio:1/1;max-width:100%;border-radius:var(--r-m);background:var(--md-surface-c);touch-action:none;cursor:crosshair}
+.note{font-size:12px;line-height:16px;color:var(--md-on-surface-variant);margin:0}
+.sel{font:500 12px var(--mono);color:var(--md-on-surface-variant)}
+.row{display:flex;flex-wrap:wrap;gap:8px}
+.snack{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--md-on-surface);color:var(--md-surface);padding:14px 16px;border-radius:4px;font-size:14px;box-shadow:var(--elev1);max-width:min(560px,calc(100% - 32px));z-index:20}
+@media (max-width:900px){
+  .app{grid-template-columns:1fr}
+  .stage{height:62vh;min-height:360px}
+  .sheet{overflow:visible}
+  .appbar p{display:none}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+
+
+<header class="appbar">
+  <div class="logo"><span class="msi" aria-hidden="true">deployed_code</span></div>
+  <div class="titles">
+    <h1>Shadow Perspective Lab</h1>
+    <p>Place forms or your own 3D models, move a sun or a point light, and read the shadow construction in one- and two-point perspective.</p>
+  </div>
+  <button class="btn filled" id="bImport"><span class="msi" aria-hidden="true">upload_file</span>Import 3D model</button>
+  <input type="file" id="fileIn" accept=".glb,.gltf,.bin,.obj,.stl,.png,.jpg,.jpeg" multiple hidden>
+</header>
+
+<main class="app">
+  <div class="stage" id="stage">
+    <canvas id="gl"></canvas>
+    <canvas id="overlay"></canvas>
+    <div class="hint" id="hint">Drag a form to move it · drag the glowing bulb to move the light · drag empty space to walk around</div>
+    <div class="readout" id="readout"></div>
+    <div class="drop" id="drop" hidden>Drop a .glb, .gltf, .obj or .stl file</div>
+  </div>
+
+  <aside class="sheet">
+    <section class="card explain" aria-live="polite">
+      <h2><span class="msi" aria-hidden="true">school</span>What you are seeing</h2>
+      <p id="explain"></p>
+    </section>
+
+    <section class="card" aria-labelledby="h-view">
+      <h2 id="h-view"><span class="msi" aria-hidden="true">visibility</span>Perspective</h2>
+      <div class="seg" role="group" aria-label="Perspective type">
+        <button id="v1" aria-pressed="false"><span class="msi chk">check</span>1-point</button>
+        <button id="v2" aria-pressed="true"><span class="msi chk">check</span>2-point</button>
+        <button id="v3" aria-pressed="false"><span class="msi chk">check</span>Free orbit</button>
+      </div>
+      <label class="sl" for="sAz">Viewing angle<input id="sAz" type="range" min="-75" max="75" step="1" value="35"><output id="oAz"></output></label>
+      <label class="sl" for="sEye">Eye height<input id="sEye" type="range" min="0.3" max="20" step="0.1" value="4"><output id="oEye"></output></label>
+      <label class="sl" for="sDist">Distance<input id="sDist" type="range" min="7" max="45" step="0.5" value="17"><output id="oDist"></output></label>
+      <label class="sl" for="sLens">Focal length<input id="sLens" type="range" min="14" max="85" step="1" value="24"><output id="oLens"></output></label>
+      <label class="sl" for="sShift">Horizon in frame<input id="sShift" type="range" min="-0.45" max="0.45" step="0.01" value="0.12"><output id="oShift"></output></label>
+      <p class="note">The camera stays level, so verticals stay vertical. Angle 0° gives one-point perspective; any other angle gives two-point. Free orbit lets the camera tilt (three-point).</p>
+    </section>
+
+    <section class="card" aria-labelledby="h-light">
+      <h2 id="h-light"><span class="msi" aria-hidden="true">light_mode</span>Light</h2>
+      <div class="seg" role="group" aria-label="Light type">
+        <button id="lSun" aria-pressed="true"><span class="msi chk">check</span>Sun</button>
+        <button id="lPoint" aria-pressed="false"><span class="msi chk">check</span>Point light</button>
+      </div>
+      <svg id="plan" viewBox="-13 -13 26 26" aria-label="Plan view: drag the light"></svg>
+      <p class="note">Plan view from above. Drag the light. The dashed line through the forms splits the ground into the viewer's side (light in front) and the far side (light behind).</p>
+      <label class="sl" for="sElev" id="lbElev">Sun altitude<input id="sElev" type="range" min="5" max="85" step="1" value="35"><output id="oElev"></output></label>
+      <label class="sl" for="sLH" id="lbLH" hidden>Light height<input id="sLH" type="range" min="0.5" max="14" step="0.1" value="7"><output id="oLH"></output></label>
+      <div class="chips">
+        <button class="chip" id="pFront"><span class="msi" aria-hidden="true">south</span>In front</button>
+        <button class="chip" id="pBack"><span class="msi" aria-hidden="true">north</span>Behind</button>
+        <button class="chip" id="pSide"><span class="msi" aria-hidden="true">west</span>From the side</button>
+      </div>
+    </section>
+
+    <section class="card" aria-labelledby="h-forms">
+      <h2 id="h-forms"><span class="msi" aria-hidden="true">apartment</span>Forms</h2>
+      <div class="chips" id="lib"></div>
+      <div class="row">
+        <button class="btn tonal" id="bImport2"><span class="msi" aria-hidden="true">view_in_ar</span>Import 3D model</button>
+      </div>
+      <label class="chip" style="justify-self:start"><input type="checkbox" id="cClay" checked><span class="msi on">check</span><span class="msi off">palette</span>Clay material for imports</label>
+      <p class="note">GLB, glTF (select the .gltf with its .bin and textures), OBJ or STL. You can also drop a file on the drawing. Shadow construction for a model uses its bounding box.</p>
+      <div class="sel" id="selName">No form selected</div>
+      <label class="sl" for="sRot">Rotate<input id="sRot" type="range" min="0" max="180" step="1" value="0"><output id="oRot"></output></label>
+      <label class="sl" for="sScale">Size<input id="sScale" type="range" min="0.2" max="3" step="0.05" value="1"><output id="oScale"></output></label>
+      <div class="row">
+        <button class="btn outlined" id="bUp" hidden><span class="msi" aria-hidden="true">screen_rotation_alt</span>Stand upright</button>
+        <button class="btn danger" id="bDel"><span class="msi" aria-hidden="true">delete</span>Remove</button>
+        <button class="btn" id="bClear"><span class="msi" aria-hidden="true">clear_all</span>Clear all</button>
+      </div>
+    </section>
+
+    <section class="card" aria-labelledby="h-ov">
+      <h2 id="h-ov"><span class="msi" aria-hidden="true">architecture</span>Construction lines</h2>
+      <div class="chips">
+        <label class="chip"><input type="checkbox" id="cHL" checked><span class="msi on">check</span><span class="swatch off" style="background:#1f5ac8"></span>Horizon &amp; VPs</label>
+        <label class="chip"><input type="checkbox" id="cEdges" checked><span class="msi on">check</span><span class="swatch off" style="background:#8fb0ea"></span>Edges to VPs</label>
+        <label class="chip"><input type="checkbox" id="cRays" checked><span class="msi on">check</span><span class="swatch off" style="background:var(--ray)"></span>Light rays</label>
+        <label class="chip"><input type="checkbox" id="cShad" checked><span class="msi on">check</span><span class="swatch off" style="background:var(--shadow)"></span>Shadow lines</label>
+        <label class="chip"><input type="checkbox" id="cAll"><span class="msi on">check</span><span class="msi off">select_all</span>All forms</label>
+        <label class="chip"><input type="checkbox" id="cGrid"><span class="msi on">check</span><span class="msi off">grid_on</span>Ground grid</label>
+      </div>
+      <p class="note">Each shadow point (red) is where a light ray (orange) through a top corner meets the shadow line (green) through that corner's foot.</p>
+    </section>
+  </aside>
+</main>
+<div class="snack" id="snack" hidden role="status"></div>
+
+<script src="three.min.js"></script>
+<script src="OrbitControls.js"></script>
+<script src="GLTFLoader.js"></script>
+<script src="OBJLoader.js"></script>
+<script src="STLLoader.js"></script>
+<script>
+(() => {
+const $ = id => document.getElementById(id);
+const stage = $('stage'), glc = $('gl'), ov = $('overlay'), octx = ov.getContext('2d');
+const V3 = THREE.Vector3;
+
+// ---------------------------------------------------------------- renderer / scene
+const renderer = new THREE.WebGLRenderer({canvas: glc, antialias: true});
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.setClearColor(0xfbfbf8);
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(50, 1, 0.1, 2000);
+camera.filmGauge = 36;
+const controls = new THREE.OrbitControls(camera, glc);
+controls.enabled = false; controls.maxPolarAngle = Math.PI * 0.495; controls.enableDamping = false;
+
+const hemi = new THREE.HemisphereLight(0xffffff, 0xd8d4cc, 0.72);
+scene.add(hemi);
+const sun = new THREE.DirectionalLight(0xffffff, 0.62);
+sun.castShadow = true;
+sun.shadow.mapSize.set(4096, 4096);
+Object.assign(sun.shadow.camera, {left: -30, right: 30, top: 30, bottom: -30, near: 1, far: 200});
+sun.shadow.bias = -0.0004; sun.shadow.normalBias = 0.02;
+scene.add(sun); scene.add(sun.target);
+const plight = new THREE.PointLight(0xffffff, 0.75, 0, 1);
+plight.castShadow = true; plight.shadow.mapSize.set(2048, 2048);
+plight.shadow.camera.near = 0.1; plight.shadow.camera.far = 600; plight.shadow.bias = -0.002;
+scene.add(plight);
+const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.22, 24, 12), new THREE.MeshBasicMaterial({color: 0xffa21f}));
+bulb.castShadow = false; scene.add(bulb);
+const pole = new THREE.Line(new THREE.BufferGeometry().setFromPoints([new V3(), new V3()]),
+  new THREE.LineDashedMaterial({color: 0x888888, dashSize: 0.25, gapSize: 0.18}));
+scene.add(pole);
+
+// paper-toned ground (unlit) + a shadow-only layer: even ground tone, crisp grey cast shadows like a drawing
+const ground = new THREE.Mesh(new THREE.PlaneGeometry(4000, 4000), new THREE.MeshBasicMaterial({color: 0xe7e3da}));
+ground.rotation.x = -Math.PI / 2; scene.add(ground);
+const shadowLayer = new THREE.Mesh(new THREE.PlaneGeometry(240, 240), new THREE.ShadowMaterial({color: 0x1f1f1f, opacity: 0.42}));
+shadowLayer.rotation.x = -Math.PI / 2; shadowLayer.position.y = 0.001; shadowLayer.receiveShadow = true; scene.add(shadowLayer);
+const grid = new THREE.GridHelper(60, 60, 0xb9b3a8, 0xd4cfc6); grid.position.y = 0.002; grid.visible = false; scene.add(grid);
+
+const WHITE = new THREE.MeshLambertMaterial({color: 0xf6f6f2});
+const EDGE = new THREE.LineBasicMaterial({color: 0x1e1e1e});
+
+// ---------------------------------------------------------------- form library
+// Each builder returns {group, keys:[local top points], foot:[local footprint pts]}
+function finish(group, meshes) {
+  for (const m of meshes) {
+    m.castShadow = true; m.receiveShadow = true; group.add(m);
+    const e = new THREE.LineSegments(new THREE.EdgesGeometry(m.geometry, 25), EDGE);
+    e.position.copy(m.position); e.rotation.copy(m.rotation); e.scale.copy(m.scale);
+    group.add(e);
+  }
+  return group;
+}
+function boxMesh(sx, sy, sz, x = 0, y = 0, z = 0) { // y = base height
+  const m = new THREE.Mesh(new THREE.BoxGeometry(sx, sy, sz), WHITE); m.position.set(x, y + sy / 2, z); return m;
+}
+function extrudePlan(pts, h) { // pts in plan (x, z)
+  const s = new THREE.Shape(pts.map(([x, z]) => new THREE.Vector2(x, -z)));
+  const g = new THREE.ExtrudeGeometry(s, {depth: h, bevelEnabled: false}); g.rotateX(-Math.PI / 2);
+  return new THREE.Mesh(g, WHITE);
+}
+function rectKeys(sx, sz, h, x = 0, z = 0) {
+  return [[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([a, b]) => new V3(x + a * sx / 2, h, z + b * sz / 2));
+}
+const LIB = {
+  cube: {label: 'Cube', make() { return {g: finish(new THREE.Group(), [boxMesh(2.6, 2.6, 2.6)]), keys: rectKeys(2.6, 2.6, 2.6)}; }},
+  tower: {label: 'Tower', make() { return {g: finish(new THREE.Group(), [boxMesh(1.6, 5, 1.6)]), keys: rectKeys(1.6, 1.6, 5)}; }},
+  lshape: {label: 'L-building', make() {
+    const p = [[-3, 1.5], [3, 1.5], [3, -1], [-0.5, -1], [-0.5, -3.5], [-3, -3.5]];
+    return {g: finish(new THREE.Group(), [extrudePlan(p, 3)]), keys: p.map(([x, z]) => new V3(x, 3, z))}; }},
+  gable: {label: 'Gable house', make() {
+    const s = new THREE.Shape([[-1.5, 0], [1.5, 0], [1.5, 2.4], [0, 4], [-1.5, 2.4]].map(a => new THREE.Vector2(...a)));
+    const geo = new THREE.ExtrudeGeometry(s, {depth: 4, bevelEnabled: false}); geo.translate(0, 0, -2);
+    const keys = [];
+    for (const z of [-2, 2]) keys.push(new V3(-1.5, 2.4, z), new V3(1.5, 2.4, z), new V3(0, 4, z));
+    return {g: finish(new THREE.Group(), [new THREE.Mesh(geo, WHITE)]), keys}; }},
+  hip: {label: 'Pyramid roof', make() {
+    const cone = new THREE.Mesh(new THREE.ConeGeometry(1.5 * Math.SQRT2, 2, 4, 1), WHITE);
+    cone.rotation.y = Math.PI / 4; cone.position.y = 2.4 + 1;
+    return {g: finish(new THREE.Group(), [boxMesh(3, 2.4, 3), cone]), keys: [...rectKeys(3, 3, 2.4), new V3(0, 4.4, 0)]}; }},
+  column: {label: 'Column', make() {
+    const c = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 3.4, 36), WHITE); c.position.y = 0.25 + 1.7;
+    const cap = boxMesh(0.9, 0.25, 0.9, 0, 3.65);
+    return {g: finish(new THREE.Group(), [boxMesh(0.9, 0.25, 0.9), c, cap]), keys: rectKeys(0.9, 0.9, 3.9)}; }},
+  arch: {label: 'Arch', make() {
+    const s = new THREE.Shape();
+    s.moveTo(-1.6, 0); s.lineTo(-0.8, 0); s.lineTo(-0.8, 1.8);
+    s.absarc(0, 1.8, 0.8, Math.PI, 0, true);
+    s.lineTo(0.8, 0); s.lineTo(1.6, 0); s.lineTo(1.6, 3.6); s.lineTo(-1.6, 3.6); s.lineTo(-1.6, 0);
+    const geo = new THREE.ExtrudeGeometry(s, {depth: 0.8, bevelEnabled: false, curveSegments: 28}); geo.translate(0, 0, -0.4);
+    return {g: finish(new THREE.Group(), [new THREE.Mesh(geo, WHITE)]), keys: rectKeys(3.2, 0.8, 3.6)}; }},
+  stairs: {label: 'Stairs', make() {
+    const ms = [], keys = [];
+    for (let i = 0; i < 4; i++) {
+      const h = 0.45 * (i + 1), z0 = 1.6 - i * 0.5, depth = z0 + 1.0;
+      ms.push(boxMesh(1.8, h, depth, 0, 0, z0 - depth / 2));
+      keys.push(new V3(-0.9, h, z0), new V3(0.9, h, z0));
+    }
+    keys.push(new V3(-0.9, 1.8, -1), new V3(0.9, 1.8, -1));
+    return {g: finish(new THREE.Group(), ms), keys}; }},
+  canopy: {label: 'Wall + canopy', make() {
+    const wall = boxMesh(4.4, 3.4, 0.35, 0, 0, 0);
+    const slab = boxMesh(2.2, 0.15, 1.6, 0.6, 2.5, 0.175 + 0.8);
+    return {g: finish(new THREE.Group(), [wall, slab]),
+      keys: [...rectKeys(4.4, 0.35, 3.4), new V3(-0.5, 2.65, 1.775), new V3(1.7, 2.65, 1.775)]}; }},
+};
+
+let forms = [], selected = null;
+function addForm(type, x, z, rot = 0) {
+  const {g, keys} = LIB[type].make();
+  g.position.set(x, 0, z); g.rotation.y = rot;
+  g.userData = {type, keys};
+  scene.add(g); forms.push(g); select(g); return g;
+}
+function removeForm(g) { scene.remove(g); forms = forms.filter(f => f !== g); if (selected === g) select(forms[forms.length - 1] || null); }
+function select(g) {
+  selected = g;
+  $('selName').textContent = g ? `Selected: ${g.userData.label || LIB[g.userData.type].label}` : 'No form selected';
+  const deg = g ? Math.round(((THREE.MathUtils.radToDeg(g.rotation.y) % 180) + 180) % 180) : 0;
+  $('sRot').value = deg; $('oRot').textContent = deg + '°'; $('sRot').disabled = !g;
+  const sc = g ? g.scale.x : 1;
+  $('sScale').value = sc; $('oScale').textContent = '×' + sc.toFixed(2); $('sScale').disabled = !g;
+  $('bUp').hidden = !(g && g.userData.type === 'model');
+  dirty = true;
+}
+const lib = $('lib');
+for (const [k, v] of Object.entries(LIB)) {
+  const b = document.createElement('button'); b.className = 'chip'; b.id = 'add-' + k;
+  b.innerHTML = '<span class="msi" aria-hidden="true">add</span>'; b.append(v.label);
+  b.onclick = () => {
+    const t = viewTarget();
+    addForm(k, t.x + (Math.random() - 0.5) * 3, t.z + (Math.random() - 0.5) * 3); dirty = true; drawPlan();
+  };
+  lib.appendChild(b);
+}
+
+// ---------------------------------------------------------------- state
+const S = {
+  view: '2pt', az: 35, eye: 4, dist: 17, lens: 24, shift: 0.12,
+  light: 'sun', sunAz: 0, sunEl: 35, pPos: new V3(-3, 7, 5),
+  showHL: true, showEdges: true, showRays: true, showShad: true, all: false,
+};
+let dirty = true;
+
+function viewTarget() { // centre of the forms (plan)
+  if (!forms.length) return new V3(0, 0, 0);
+  const c = new V3(); forms.forEach(f => c.add(f.position)); return c.multiplyScalar(1 / forms.length).setY(0);
+}
+let target = new V3();
+
+// viewer direction (plan): az=0 -> viewer on +z looking toward -z
+function viewerDir() { const a = THREE.MathUtils.degToRad(S.az); return new V3(Math.sin(a), 0, Math.cos(a)); }
+
+function applyCamera() {
+  const w = stage.clientWidth, h = stage.clientHeight;
+  camera.aspect = w / h;
+  camera.setFocalLength(S.lens);
+  if (S.view !== 'free') {
+    const d = viewerDir();
+    camera.position.copy(target).addScaledVector(d, S.dist).setY(S.eye);
+    camera.up.set(0, 1, 0);
+    camera.lookAt(target.x, S.eye, target.z);       // level camera: picture plane is vertical
+    camera.setViewOffset(w, h, 0, -S.shift * h, w, h);  // lens shift keeps verticals vertical
+  } else {
+    camera.clearViewOffset();
+  }
+  camera.updateProjectionMatrix(); camera.updateMatrixWorld();
+}
+
+function sunDirToLight() { // unit vector pointing toward the sun
+  const a = THREE.MathUtils.degToRad(S.sunAz), e = THREE.MathUtils.degToRad(S.sunEl);
+  return new V3(Math.cos(e) * Math.sin(a), Math.sin(e), Math.cos(e) * Math.cos(a));
+}
+function applyLight() {
+  const isSun = S.light === 'sun';
+  sun.visible = isSun; plight.visible = !isSun; bulb.visible = !isSun; pole.visible = !isSun;
+  if (isSun) {
+    const u = sunDirToLight();
+    sun.target.position.copy(target);
+    sun.position.copy(target).addScaledVector(u, 60);
+    sun.shadow.camera.left = -30; sun.shadow.camera.updateProjectionMatrix();
+    hemi.intensity = 0.72;
+  } else {
+    plight.position.copy(S.pPos); bulb.position.copy(S.pPos);
+    pole.geometry.setFromPoints([S.pPos.clone(), S.pPos.clone().setY(0)]); pole.computeLineDistances();
+    hemi.intensity = 0.66;
+  }
+}
+
+// ---------------------------------------------------------------- overlay maths
+function camFwd() { return new V3(0, 0, -1).applyQuaternion(camera.quaternion); }
+function toScreen(p) {
+  const v = p.clone().applyMatrix4(camera.matrixWorldInverse);
+  if (v.z > -0.05) return null; // behind the camera
+  const n = p.clone().project(camera);
+  return {x: (n.x + 1) / 2 * ov.clientWidth, y: (1 - n.y) / 2 * ov.clientHeight};
+}
+function vpOf(dir) {
+  let d = dir.clone().normalize(); const f = camFwd();
+  if (d.dot(f) < 0) d.negate();
+  if (d.dot(f) < 1e-3) return null; // parallel to picture plane: no vanishing point
+  return toScreen(camera.position.clone().addScaledVector(d, 1e5));
+}
+function hull(pts) {
+  const P = pts.slice().sort((a, b) => a.x - b.x || a.z - b.z);
+  const cr = (o, a, b) => (a.x - o.x) * (b.z - o.z) - (a.z - o.z) * (b.x - o.x);
+  const lo = [], up = [];
+  for (const p of P) { while (lo.length >= 2 && cr(lo[lo.length - 2], lo[lo.length - 1], p) <= 1e-9) lo.pop(); lo.push(p); }
+  for (const p of P.slice().reverse()) { while (up.length >= 2 && cr(up[up.length - 2], up[up.length - 1], p) <= 1e-9) up.pop(); up.push(p); }
+  return lo.slice(0, -1).concat(up.slice(0, -1));
+}
+function css(n) { return getComputedStyle(document.documentElement).getPropertyValue(n).trim(); }
+const COL = {hl: '#1f5ac8', ray: '#e07400', shad: '#13935a', pt: '#d21f2c', grey: '#8a8a8a', ink: '#1d2329'};
+
+function line(a, b, col, w = 1.5, dash = null) {
+  if (!a || !b) return;
+  octx.beginPath(); octx.setLineDash(dash || []); octx.strokeStyle = col; octx.lineWidth = w;
+  octx.moveTo(a.x, a.y); octx.lineTo(b.x, b.y); octx.stroke();
+}
+function dot(p, r, col, ring) {
+  if (!p) return;
+  octx.setLineDash([]); octx.beginPath(); octx.arc(p.x, p.y, r, 0, Math.PI * 2); octx.fillStyle = col; octx.fill();
+  if (ring) { octx.strokeStyle = ring; octx.lineWidth = 1.5; octx.stroke(); }
+}
+function tag(p, text, col, dx = 10, dy = -10) {
+  if (!p) return;
+  octx.font = '500 12px "DM Mono", ui-monospace, monospace';
+  const w = octx.measureText(text).width;
+  let x = Math.min(Math.max(p.x + dx, 4), ov.clientWidth - w - 8), y = Math.min(Math.max(p.y + dy, 14), ov.clientHeight - 6);
+  octx.fillStyle = 'rgba(255,255,255,.88)'; octx.fillRect(x - 3, y - 12, w + 6, 16);
+  octx.fillStyle = col; octx.fillText(text, x, y);
+}
+function edgeArrow(p, text, col) { // VP far outside the frame: show a marker on the edge
+  const W = ov.clientWidth, H = ov.clientHeight;
+  const q = {x: Math.min(Math.max(p.x, 10), W - 10), y: Math.min(Math.max(p.y, 10), H - 10)};
+  dot(q, 4, col); tag(q, text + (p.x > W ? ' →' : p.x < 0 ? ' ←' : p.y < 0 ? ' ↑' : ' ↓'), col, p.x > W ? -text.length * 7.6 - 26 : 10, p.y > H ? -12 : 16);
+}
+function inside(p, m = 0) { return p && p.x >= -m && p.x <= ov.clientWidth + m && p.y >= -m && p.y <= ov.clientHeight + m; }
+
+function drawOverlay() {
+  const dpr = Math.min(devicePixelRatio, 2);
+  octx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  octx.clearRect(0, 0, ov.clientWidth, ov.clientHeight);
+  const W = ov.clientWidth;
+  const f = camFwd(), fh = f.clone().setY(0).normalize();
+  // horizon: line through VPs of two horizontal directions
+  const h1 = vpOf(fh.clone().applyAxisAngle(new V3(0, 1, 0), 0.4)), h2 = vpOf(fh.clone().applyAxisAngle(new V3(0, 1, 0), -0.4));
+  let hlY = null;
+  if (S.showHL && h1 && h2) {
+    const k = (h2.y - h1.y) / (h2.x - h1.x || 1e-6);
+    const yAt = x => h1.y + k * (x - h1.x);
+    hlY = yAt(W / 2);
+    line({x: 0, y: yAt(0)}, {x: W, y: yAt(W)}, COL.hl, 2);
+    tag({x: 8, y: yAt(8)}, 'HL  horizon = eye level', COL.hl, 0, -8);
+  }
+  // object vanishing points (axes of the selected form, or world axes)
+  const ref = selected || forms[0];
+  const ry = ref ? ref.rotation.y : 0;
+  const ax = [new V3(1, 0, 0).applyAxisAngle(new V3(0, 1, 0), ry), new V3(0, 0, 1).applyAxisAngle(new V3(0, 1, 0), ry)];
+  const vps = ax.map(vpOf);
+  if (S.showHL) {
+    const named = vps.filter(Boolean).sort((a, b) => a.x - b.x);
+    const names = named.length === 2 ? ['VPL', 'VPR'] : ['VP'];
+    named.forEach((p, i) => inside(p) ? (dot(p, 4.5, COL.hl), tag(p, names[i], COL.hl, 8, 18)) : edgeArrow(p, names[i] + ' off page', COL.hl));
+  }
+  if (S.showEdges && ref) {
+    // extend the reference form's base and top edges to their VPs
+    const keys = ref.userData.keys.filter(k => Math.abs(k.y - ref.userData.keys[0].y) < 1e-6).slice(0, 4);
+    if (keys.length === 4) {
+      const pts = keys.map(k => ref.localToWorld(k.clone()));
+      const base = pts.map(p => p.clone().setY(0));
+      for (const set of [pts, base]) for (let i = 0; i < 4; i++) {
+        const a = set[i], b = set[(i + 1) % 4], dir = b.clone().sub(a);
+        const vp = vpOf(dir); if (!vp) continue;
+        const A = toScreen(a), B = toScreen(b); if (!A || !B) continue;
+        const far = Math.hypot(A.x - vp.x, A.y - vp.y) > Math.hypot(B.x - vp.x, B.y - vp.y) ? A : B;
+        line(far, vp, 'rgba(31,90,200,.38)', 1, [5, 5]);
+      }
+    }
+  }
+  // ---- light
+  let Lp, Fp, lTxt, fTxt, d = null, Lw = null;
+  if (S.light === 'sun') {
+    const u = sunDirToLight(); d = u.clone().negate();
+    Lp = vpOf(d); Fp = vpOf(d.clone().setY(0));
+    const sunInView = u.dot(f) > 0;
+    lTxt = sunInView ? 'S  sun' : 'S  light-ray VP (sun behind you)';
+    fTxt = "S'  shadow VP";
+  } else {
+    Lw = S.pPos.clone();
+    Lp = toScreen(Lw); Fp = toScreen(Lw.clone().setY(0));
+    lTxt = 'L  light'; fTxt = "L'  light foot";
+  }
+  const list = S.all ? forms : (selected ? [selected] : []);
+  for (const g of list) {
+    const rows = [];
+    for (const k of g.userData.keys) {
+      const P = g.localToWorld(k.clone()); if (P.y <= 0.001) continue;
+      let Sh;
+      if (d) { if (d.y >= -1e-4) continue; Sh = P.clone().addScaledVector(d, -P.y / d.y); }
+      else { if (Lw.y <= P.y + 0.02) continue; Sh = Lw.clone().add(P.clone().sub(Lw).multiplyScalar(Lw.y / (Lw.y - P.y))); }
+      if (Sh.distanceTo(P) > 300) continue;
+      rows.push({P, F: P.clone().setY(0), S: Sh.setY(0)});
+    }
+    if (!rows.length) continue;
+    const hv = new Set(hull(rows.map(r => r.F).concat(rows.map(r => r.S))));
+    const sel = rows.filter(r => hv.has(r.S));
+    for (const r of sel) {
+      const P = toScreen(r.P), F = toScreen(r.F), Sp = toScreen(r.S);
+      if (!P || !F || !Sp) continue;
+      if (S.showRays) { if (Lp) line(Lp, P, COL.ray, 1, [6, 5]); line(P, Sp, COL.ray, 2); }
+      if (S.showShad) { if (Fp) line(Fp, F, COL.shad, 1, [6, 5]); line(F, Sp, COL.shad, 2); }
+      line(P, F, COL.grey, 1, [3, 4]);
+    }
+    for (const r of sel) { const P = toScreen(r.P), Sp = toScreen(r.S); if (S.showRays) dot(P, 3, COL.ray); dot(Sp, 4.5, COL.pt, '#fff'); }
+  }
+  if (S.showRays || S.showShad) {
+    if (Lp && Fp) line(Lp, Fp, COL.grey, 1, [4, 4]);
+    if (Lp) inside(Lp) ? (dot(Lp, 7, COL.ray, '#1d2329'), tag(Lp, lTxt, COL.ray, 12, -10)) : edgeArrow(Lp, lTxt.split('  ')[0], COL.ray);
+    if (Fp) inside(Fp) ? (dot(Fp, 6, COL.shad, '#1d2329'), tag(Fp, fTxt, COL.shad, 12, 18)) : edgeArrow(Fp, fTxt.split('  ')[0], COL.shad);
+  }
+  // readout + explanation
+  explain(d, f, Lp, Fp);
+}
+
+function explain(d, f, Lp, Fp) {
+  const fh = f.clone().setY(0).normalize();
+  let msg, chips = [];
+  const persp = S.view === 'free' ? 'Free orbit (camera may tilt: three-point)' : (Math.abs(S.az % 90) < 0.5 ? 'One-point perspective' : 'Two-point perspective');
+  chips.push(`<span class="badge">${persp}</span>`);
+  chips.push(`<span class="badge alt">eye ${S.eye.toFixed(1)} m</span>`);
+  if (S.light === 'sun') {
+    const u = d.clone().negate(); const side = u.clone().setY(0).normalize().dot(fh);
+    chips.push(`<span class="badge alt">sun altitude ${S.sunEl}°</span>`);
+    if (Math.abs(side) < 0.06) {
+      msg = 'The sun is to the side, so its rays are parallel to the picture plane. Light rays stay parallel on the page (no vanishing point) and shadows run parallel to the horizon.';
+    } else if (side > 0) {
+      msg = 'Sun behind the object: you face the light. The sun S sits above the horizon; S′ is directly below it on the horizon. Shadows come toward you and the faces you see are in shade.';
+    } else {
+      msg = 'Sun in front of the object (behind you): the light-ray vanishing point S drops below the horizon. Shadows recede away from you toward S′ on the horizon, and the faces you see are lit.';
+    }
+  } else {
+    const rel = S.pPos.clone().sub(target).setY(0).dot(fh);
+    chips.push(`<span class="badge alt">light ${S.pPos.y.toFixed(1)} m high</span>`);
+    msg = rel < 0
+      ? 'Point light in front of the object. Rays spread out from L; on the ground, shadows radiate from the light foot L′ and fall away from you. The closer the light, the longer the shadow.'
+      : 'Point light behind the object. Shadows radiate from L′ toward you. Find each shadow point where the ray from L through a top corner meets the line from L′ through that corner’s foot.';
+    if (forms.some(g => g.userData.keys.some(k => g.localToWorld(k.clone()).y >= S.pPos.y)))
+      msg += ' Some corners are higher than the light, so they cast no ground shadow.';
+  }
+  $('explain').textContent = msg;
+  $('readout').innerHTML = chips.join('');
+}
+
+// ---------------------------------------------------------------- plan view (SVG)
+const plan = $('plan'), NS = 'http://www.w3.org/2000/svg';
+function el(n, a, p = plan) { const e = document.createElementNS(NS, n); for (const k in a) e.setAttribute(k, a[k]); p.appendChild(e); return e; }
+function drawPlan() {
+  plan.innerHTML = '';
+  const c = target;
+  const mx = x => x - c.x, mz = z => z - c.z;
+  el('circle', {cx: 0, cy: 0, r: 11, fill: 'none', stroke: 'var(--md-outline-variant)', 'stroke-width': .06});
+  // viewer + sight line
+  const vd = S.view === 'free' ? camera.position.clone().sub(c).setY(0).normalize() : viewerDir();
+  const vp = vd.clone().multiplyScalar(10.5);
+  const perp = new V3(vd.z, 0, -vd.x).multiplyScalar(12);
+  el('line', {x1: perp.x, y1: perp.z, x2: -perp.x, y2: -perp.z, stroke: 'var(--md-on-surface-variant)', 'stroke-width': .07, 'stroke-dasharray': '.4 .3'});
+  el('text', {x: vd.x * 5 + perp.x * .02, y: vd.z * 5, 'font-size': 1, fill: 'var(--md-on-surface-variant)', 'text-anchor': 'middle', 'font-family': 'DM Mono, monospace'}).textContent = 'front';
+  el('text', {x: -vd.x * 5, y: -vd.z * 5, 'font-size': 1, fill: 'var(--md-on-surface-variant)', 'text-anchor': 'middle', 'font-family': 'DM Mono, monospace'}).textContent = 'behind';
+  const cone = new V3(vd.z, 0, -vd.x).multiplyScalar(3.2);
+  el('path', {d: `M${vp.x} ${vp.z} L${-cone.x + vp.x * .35} ${-cone.z + vp.z * .35} M${vp.x} ${vp.z} L${cone.x + vp.x * .35} ${cone.z + vp.z * .35}`, stroke: 'var(--md-primary)', 'stroke-width': .08, fill: 'none'});
+  el('circle', {cx: vp.x, cy: vp.z, r: .45, fill: 'var(--md-primary)'});
+  el('text', {x: vp.x, y: vp.z + 1.5, 'font-size': .95, fill: 'var(--md-primary)', 'text-anchor': 'middle', 'font-family': 'DM Mono, monospace'}).textContent = 'viewer';
+  // forms footprints (from keys)
+  for (const g of forms) {
+    const pts = g.userData.keys.map(k => g.localToWorld(k.clone()));
+    const hv = hull(pts.map(p => ({x: p.x, z: p.z})));
+    el('polygon', {points: hv.map(p => `${mx(p.x)},${mz(p.z)}`).join(' '), fill: g === selected ? 'var(--md-primary-container)' : 'var(--md-surface-low)', stroke: 'var(--md-on-surface)', 'stroke-width': .08});
+  }
+  // light
+  let lx, lz;
+  if (S.light === 'sun') {
+    const u = sunDirToLight().setY(0).normalize(); lx = u.x * 10; lz = u.z * 10;
+    el('line', {x1: lx, y1: lz, x2: 0, y2: 0, stroke: 'var(--ray)', 'stroke-width': .1, 'stroke-dasharray': '.5 .3'});
+  } else {
+    lx = mx(S.pPos.x); lz = mz(S.pPos.z);
+  }
+  const h = el('circle', {cx: lx, cy: lz, r: .85, fill: 'var(--ray)', stroke: 'var(--md-on-surface)', 'stroke-width': .08, style: 'cursor:grab'});
+  el('text', {x: lx, y: lz - 1.3, 'font-size': 1, fill: 'var(--ray)', 'text-anchor': 'middle', 'font-family': 'DM Mono, monospace'}).textContent = S.light === 'sun' ? 'sun' : 'L';
+}
+function planPoint(ev) {
+  const r = plan.getBoundingClientRect();
+  return {x: (ev.clientX - r.left) / r.width * 26 - 13, z: (ev.clientY - r.top) / r.height * 26 - 13};
+}
+let planDrag = false;
+plan.addEventListener('pointerdown', e => { planDrag = true; plan.setPointerCapture(e.pointerId); planMove(e); });
+plan.addEventListener('pointermove', e => planDrag && planMove(e));
+plan.addEventListener('pointerup', () => planDrag = false);
+function planMove(e) {
+  const p = planPoint(e);
+  if (S.light === 'sun') { S.sunAz = THREE.MathUtils.radToDeg(Math.atan2(p.x, p.z)); }
+  else { S.pPos.set(target.x + p.x, S.pPos.y, target.z + p.z); }
+  dirty = true;
+}
+
+// ---------------------------------------------------------------- viewport interaction
+const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
+let drag = null;
+function setNdc(e) { const r = glc.getBoundingClientRect(); ndc.set((e.clientX - r.left) / r.width * 2 - 1, -(e.clientY - r.top) / r.height * 2 + 1); ray.setFromCamera(ndc, camera); }
+function hitPlane(y) { const p = new V3(); return ray.ray.intersectPlane(new THREE.Plane(new V3(0, 1, 0), -y), p) ? p : null; }
+glc.addEventListener('pointerdown', e => {
+  setNdc(e);
+  if (S.light === 'point' && ray.intersectObject(bulb).length) { drag = {kind: 'light'}; }
+  else {
+    const hits = ray.intersectObjects(forms, true).filter(h => h.object.isMesh);
+    if (hits.length) {
+      let g = hits[0].object; while (g.parent && !forms.includes(g)) g = g.parent;
+      select(g); const p = hitPlane(0);
+      drag = {kind: 'form', g, off: p ? g.position.clone().sub(p) : new V3()};
+    } else if (S.view !== 'free') {
+      drag = {kind: 'walk', x: e.clientX, y: e.clientY, az: S.az, eye: S.eye};
+    }
+  }
+  if (drag) { glc.setPointerCapture(e.pointerId); controls.enabled = false; }
+});
+glc.addEventListener('pointermove', e => {
+  if (!drag) return; setNdc(e);
+  if (drag.kind === 'light') { const p = hitPlane(S.pPos.y); if (p) { S.pPos.set(p.x, S.pPos.y, p.z); } }
+  else if (drag.kind === 'form') { const p = hitPlane(0); if (p) drag.g.position.set(p.x + drag.off.x, 0, p.z + drag.off.z); }
+  else if (drag.kind === 'walk') {
+    S.az = Math.max(-75, Math.min(75, drag.az - (e.clientX - drag.x) * 0.25));
+    S.eye = Math.max(0.3, Math.min(20, drag.eye + (e.clientY - drag.y) * 0.03));
+    syncSliders();
+  }
+  dirty = true;
+});
+glc.addEventListener('pointerup', () => {
+  if (drag && drag.kind === 'form' && S.view !== 'free') target = viewTarget();
+  drag = null; controls.enabled = S.view === 'free'; dirty = true;
+});
+controls.addEventListener('change', () => dirty = true);
+
+// ---------------------------------------------------------------- UI wiring
+const sliders = [['sAz', 'az', v => v + '°'], ['sEye', 'eye', v => (+v).toFixed(1) + ' m'], ['sDist', 'dist', v => (+v).toFixed(1) + ' m'],
+  ['sLens', 'lens', v => v + ' mm'], ['sShift', 'shift', v => (+v).toFixed(2)], ['sElev', 'sunEl', v => v + '°']];
+function syncSliders() {
+  for (const [id, key, fmt] of sliders) { $(id).value = S[key]; $('o' + id.slice(1)).textContent = fmt(S[key]); }
+  $('sLH').value = S.pPos.y; $('oLH').textContent = S.pPos.y.toFixed(1) + ' m';
+}
+for (const [id, key, fmt] of sliders) $(id).addEventListener('input', e => {
+  S[key] = +e.target.value; $('o' + id.slice(1)).textContent = fmt(S[key]);
+  if (key === 'az') setViewButtons(Math.abs(S.az) < 0.5 ? '1pt' : '2pt', true);
+  dirty = true;
+});
+$('sLH').addEventListener('input', e => { S.pPos.y = +e.target.value; $('oLH').textContent = S.pPos.y.toFixed(1) + ' m'; dirty = true; });
+$('sScale').addEventListener('input', e => { if (!selected) return; const v = +e.target.value; selected.scale.setScalar(v); $('oScale').textContent = '×' + v.toFixed(2); dirty = true; });
+$('sRot').addEventListener('input', e => { if (!selected) return; selected.rotation.y = THREE.MathUtils.degToRad(+e.target.value); $('oRot').textContent = e.target.value + '°'; dirty = true; });
+
+function setViewButtons(v, keepAz) {
+  if (S.view === 'free' && v !== 'free') { target = viewTarget(); }
+  S.view = v;
+  $('v1').setAttribute('aria-pressed', v === '1pt'); $('v2').setAttribute('aria-pressed', v === '2pt'); $('v3').setAttribute('aria-pressed', v === 'free');
+  for (const id of ['sAz', 'sEye', 'sDist', 'sShift']) $(id).disabled = v === 'free';
+  if (!keepAz) { if (v === '1pt') S.az = 0; if (v === '2pt' && Math.abs(S.az) < 1) S.az = 35; }
+  if (v === 'free') {
+    applyCamera(); camera.clearViewOffset(); camera.updateProjectionMatrix();
+    controls.target.set(target.x, 1.5, target.z); controls.enabled = true; controls.update();
+    $('hint').textContent = 'Drag empty space to orbit · scroll to zoom · drag forms or the bulb to move them';
+  } else {
+    controls.enabled = false;
+    $('hint').textContent = 'Drag a form to move it · drag the glowing bulb to move the light · drag empty space to walk around';
+  }
+  syncSliders(); dirty = true;
+}
+$('v1').onclick = () => setViewButtons('1pt');
+$('v2').onclick = () => setViewButtons('2pt');
+$('v3').onclick = () => setViewButtons('free');
+
+function setLight(t) {
+  S.light = t;
+  $('lSun').setAttribute('aria-pressed', t === 'sun'); $('lPoint').setAttribute('aria-pressed', t === 'point');
+  $('lbElev').hidden = t !== 'sun'; $('lbLH').hidden = t === 'sun';
+  dirty = true;
+}
+$('lSun').onclick = () => setLight('sun');
+$('lPoint').onclick = () => setLight('point');
+
+function placeRel(kind) { // presets relative to the current viewer
+  const vd = S.view === 'free' ? camera.position.clone().sub(target).setY(0).normalize() : viewerDir();
+  const right = new V3(vd.z, 0, -vd.x);
+  let dir;
+  if (kind === 'front') dir = vd.clone().multiplyScalar(0.8).addScaledVector(right, -0.6);
+  if (kind === 'back') dir = vd.clone().multiplyScalar(-0.85).addScaledVector(right, 0.5);
+  if (kind === 'side') dir = right.clone().multiplyScalar(-1);
+  dir.normalize();
+  if (S.light === 'sun') { S.sunAz = THREE.MathUtils.radToDeg(Math.atan2(dir.x, dir.z)); }
+  else { const r = kind === 'side' ? 7 : 6; S.pPos.set(target.x + dir.x * r, S.pPos.y, target.z + dir.z * r); }
+  dirty = true;
+}
+$('pFront').onclick = () => placeRel('front');
+$('pBack').onclick = () => placeRel('back');
+$('pSide').onclick = () => placeRel('side');
+
+$('bDel').onclick = () => { if (selected) removeForm(selected); dirty = true; };
+$('bClear').onclick = () => { [...forms].forEach(removeForm); dirty = true; };
+const checks = {cHL: 'showHL', cEdges: 'showEdges', cRays: 'showRays', cShad: 'showShad', cAll: 'all'};
+for (const [id, key] of Object.entries(checks)) $(id).addEventListener('change', e => { S[key] = e.target.checked; dirty = true; });
+$('cGrid').addEventListener('change', e => { grid.visible = e.target.checked; dirty = true; });
+
+// ---------------------------------------------------------------- 3D model import
+function snack(msg) { const s = $('snack'); s.textContent = msg; s.hidden = false; clearTimeout(snack.t); snack.t = setTimeout(() => s.hidden = true, 4200); }
+function wrapModel(obj, name, zUp) {
+  if (zUp) obj.rotation.x = -Math.PI / 2;
+  const clay = $('cClay').checked;
+  let tris = 0;
+  obj.updateMatrixWorld(true);
+  obj.traverse(o => { if (o.isMesh) { const g = o.geometry; tris += (g.index ? g.index.count : g.attributes.position.count) / 3; } });
+  const meshes = [];
+  obj.traverse(o => { if (o.isMesh) meshes.push(o); });
+  for (const o of meshes) {
+    o.castShadow = true; o.receiveShadow = true;
+    if (clay) o.material = WHITE;
+    else {
+      const ms = Array.isArray(o.material) ? o.material : [o.material];
+      ms.forEach(m => { if (m) m.side = THREE.FrontSide; });
+    }
+    if (tris < 250000) {
+      const e = new THREE.LineSegments(new THREE.EdgesGeometry(o.geometry, 35), EDGE);
+      o.add(e);
+    }
+  }
+  // normalise: centre on the origin, base on the ground, sensible size
+  const inner = new THREE.Group(); inner.add(obj);
+  let box = new THREE.Box3().setFromObject(inner);
+  const size = box.getSize(new V3());
+  const h = Math.max(size.x, size.y, size.z);
+  let k = 1;
+  if (h > 30 || h < 0.3) k = 4 / h;            // likely mm / cm / km units: fit to ~4 m
+  inner.scale.setScalar(k);
+  box = new THREE.Box3().setFromObject(inner);
+  const c = box.getCenter(new V3());
+  inner.position.set(-c.x, -box.min.y, -c.z);
+  const g = new THREE.Group(); g.add(inner);
+  box = new THREE.Box3().setFromObject(g);
+  const keys = rectKeys(box.max.x - box.min.x, box.max.z - box.min.z, box.max.y);
+  const t = viewTarget();
+  g.position.set(t.x + (Math.random() - 0.5) * 2, 0, t.z + (Math.random() - 0.5) * 2);
+  g.userData = {type: 'model', keys, label: name, tris: Math.round(tris)};
+  scene.add(g); forms.push(g); select(g);
+  if (!forms.slice(0, -1).length) target = viewTarget();
+  dirty = true;
+  snack(`Imported ${name}` + (k !== 1 ? ` (rescaled to ${box.max.y.toFixed(1)} m tall)` : '') + (tris >= 250000 ? ' · outlines skipped for a heavy mesh' : ''));
+}
+function refreshKeys(g) { // after "stand upright" recompute box + keys
+  const inner = g.children[0];
+  g.updateMatrixWorld(true);
+  const s = g.scale.x, ry = g.rotation.y, p = g.position.clone();
+  g.scale.setScalar(1); g.rotation.y = 0; g.position.set(0, 0, 0); g.updateMatrixWorld(true);
+  let box = new THREE.Box3().setFromObject(inner);
+  const c = box.getCenter(new V3());
+  inner.position.x -= c.x; inner.position.z -= c.z; inner.position.y -= box.min.y;
+  box = new THREE.Box3().setFromObject(inner);
+  g.userData.keys = rectKeys(box.max.x - box.min.x, box.max.z - box.min.z, box.max.y);
+  g.scale.setScalar(s); g.rotation.y = ry; g.position.copy(p);
+}
+$('bUp').onclick = () => {
+  if (!selected || selected.userData.type !== 'model') return;
+  const inner = selected.children[0], obj = inner.children[0];
+  obj.rotation.x = obj.rotation.x ? 0 : -Math.PI / 2;
+  refreshKeys(selected); dirty = true;
+};
+function importFiles(fileList) {
+  const files = [...fileList];
+  const byName = new Map(files.map(f => [f.name, f]));
+  const main = files.find(f => /\.(glb|gltf|obj|stl)$/i.test(f.name));
+  if (!main) { snack('Choose a .glb, .gltf, .obj or .stl file.'); return; }
+  const ext = main.name.split('.').pop().toLowerCase();
+  const name = main.name.replace(/\.[^.]+$/, '');
+  const urls = [];
+  const manager = new THREE.LoadingManager();
+  manager.setURLModifier(url => {
+    const base = decodeURI(url.split('/').pop().split('?')[0]);
+    if (byName.has(base)) { const u = URL.createObjectURL(byName.get(base)); urls.push(u); return u; }
+    return url;
+  });
+  const fail = err => { console.error(err); snack(`Could not read ${main.name}. For .gltf, select the .bin and texture files too, or export a single .glb.`); };
+  const done = () => urls.forEach(u => URL.revokeObjectURL(u));
+  const reader = new FileReader();
+  reader.onerror = fail;
+  if (ext === 'obj') {
+    reader.onload = () => { try { wrapModel(new THREE.OBJLoader(manager).parse(reader.result), name, false); } catch (e) { fail(e); } };
+    reader.readAsText(main);
+  } else if (ext === 'stl') {
+    reader.onload = () => {
+      try {
+        const geo = new THREE.STLLoader().parse(reader.result); geo.computeVertexNormals();
+        wrapModel(new THREE.Mesh(geo, WHITE), name, true);   // STL files are usually Z-up
+      } catch (e) { fail(e); }
+    };
+    reader.readAsArrayBuffer(main);
+  } else {
+    reader.onload = () => {
+      new THREE.GLTFLoader(manager).parse(reader.result, '', gltf => { wrapModel(gltf.scene, name, false); done(); }, fail);
+    };
+    ext === 'glb' ? reader.readAsArrayBuffer(main) : reader.readAsText(main);
+  }
+}
+const fileIn = $('fileIn');
+$('bImport').onclick = () => fileIn.click();
+$('bImport2').onclick = () => fileIn.click();
+fileIn.addEventListener('change', () => { if (fileIn.files.length) importFiles(fileIn.files); fileIn.value = ''; });
+let dragDepth = 0;
+stage.addEventListener('dragenter', e => { e.preventDefault(); dragDepth++; $('drop').hidden = false; });
+stage.addEventListener('dragover', e => e.preventDefault());
+stage.addEventListener('dragleave', () => { if (--dragDepth <= 0) { dragDepth = 0; $('drop').hidden = true; } });
+stage.addEventListener('drop', e => { e.preventDefault(); dragDepth = 0; $('drop').hidden = true; if (e.dataTransfer.files.length) importFiles(e.dataTransfer.files); });
+
+// ---------------------------------------------------------------- loop
+function resize() {
+  const w = stage.clientWidth, h = stage.clientHeight, dpr = Math.min(devicePixelRatio, 2);
+  renderer.setSize(w, h, false);
+  ov.width = w * dpr; ov.height = h * dpr;
+  dirty = true;
+}
+new ResizeObserver(resize).observe(stage);
+let lastPlan = '';
+function frame() {
+  requestAnimationFrame(frame);
+  if (!dirty) return;
+  dirty = false;
+  applyCamera();
+  applyLight();
+  renderer.render(scene, camera);
+  drawOverlay();
+  drawPlan();
+}
+
+// starting scene: cube + tower in two-point perspective, sun behind the forms
+addForm('cube', -2.0, 0.6);
+addForm('tower', 1.6, -0.6);
+select(forms[1]);
+target = viewTarget();
+S.sunAz = THREE.MathUtils.radToDeg(Math.atan2(-viewerDir().x, -viewerDir().z)) + 25;
+S.pPos.set(target.x - 3.5, 7, target.z + 4.5);
+setLight('sun'); setViewButtons('2pt', true); syncSliders(); resize();
+requestAnimationFrame(frame);
+})();
+
+</script>
+</body>
+</html>
