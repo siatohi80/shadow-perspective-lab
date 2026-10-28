@@ -406,7 +406,7 @@ function paint(g, hex) {   // hex = null -> plain white
   g.traverse(o => { if (o.isMesh && o.material !== GLASS && !o.userData.ownMat && o !== bulb) o.material = m; });
   g.userData.color = hex;
 }
-function applyLook(g) { if (S.look === 'pastel') paint(g, PASTELS[pastelNext++ % PASTELS.length]); }
+function applyLook(g) { if (S.look === 'pastel') paint(g, PASTELS[Math.floor(Math.random() * PASTELS.length)]); }
 const GLASS = new THREE.MeshLambertMaterial({color: 0x9fb4c8, side: THREE.DoubleSide, transparent: true, opacity: 0.28, depthWrite: false});
 const EDGE = new THREE.LineBasicMaterial({color: 0x1e1e1e});
 
@@ -1496,7 +1496,11 @@ const hexCss = h => '#' + h.toString(16).padStart(6, '0');
 function setLook(look, mix = true) {
   S.look = look; $('lkWhite').setAttribute('aria-pressed', look === 'white'); $('lkPastel').setAttribute('aria-pressed', look === 'pastel');
   if (look === 'white') forms.forEach(g => paint(g, null));
-  else if (mix) { pastelNext = 0; forms.forEach(g => paint(g, PASTELS[pastelNext++ % PASTELS.length])); }
+  else if (mix) {   // Random: shuffle the palette so each form gets a different colour, new every time
+    const bag = PASTELS.slice().sort(() => Math.random() - 0.5);
+    forms.forEach((g, i) => paint(g, bag[i % bag.length]));
+    pastelNext = Math.floor(Math.random() * PASTELS.length);
+  }
   markSwatch(); dirty = true;
 }
 const menu = $('colorMenu');
@@ -1519,7 +1523,7 @@ function buildMenu() {
     };
     menu.appendChild(b);
   };
-  add('Mixed palette', 'mix', null, null);
+  add('Random', 'mix', null, null);
   PASTELS.forEach((hex, i) => add(PASTEL_NAMES[i], '', hexCss(hex), hex));
 }
 function openMenu() { buildMenu(); menu.hidden = false; $('lkPastel').setAttribute('aria-expanded', 'true'); const f = menu.querySelector('[aria-selected="true"]') || menu.querySelector('button'); f && f.focus(); }
