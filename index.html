@@ -954,16 +954,37 @@ function endPlacing(keep) {
   dirty = true; drawPlan();
 }
 // snap targets on the other forms: their corners (top and foot) and the centre of their top
+// edge midpoints of a form's key outline (rect keys come in fours; other outlines are one closed loop)
+function keyMidpoints(g, ws) {
+  if (g.userData.noEdges || ws.length < 2) return [];
+  const n = ws.length % 4 === 0 ? 4 : ws.length, out = [];
+  for (let s0 = 0; s0 < ws.length; s0 += n)
+    for (let i = 0; i < n; i++) { const a = ws[s0 + i], b = ws[s0 + (i + 1) % n]; if (b) { const m = a.clone().add(b).multiplyScalar(0.5); m.mid = true; out.push(m); } }
+  return out;
+}
 function formSnapPoints() {
   const pts = [];
   forms.forEach(g => {
     if (placing && g === placing.g) return;
     g.updateMatrixWorld();
-    g.userData.keys.forEach(k => { const w = g.localToWorld(k.clone()); pts.push(w, new V3(w.x, g.position.y, w.z)); });
+    const ws = g.userData.keys.map(k => g.localToWorld(k.clone()));
+    const mids = keyMidpoints(g, ws);
+    [...ws, ...mids].forEach(w => { const f = new V3(w.x, g.position.y, w.z); f.mid = w.mid; pts.push(w, f); });
     const box = new THREE.Box3().setFromObject(g), c = box.getCenter(new V3());
     const top = new V3(c.x, box.max.y, c.z); top.centre = true; pts.push(top);
   });
   return pts;
+}
+// second step: the point is fixed, moving the pointer turns the form around it (15° steps, Shift for free)
+function rotatePlacing(e) {
+  setNdc(e); const g = placing.g, p = hitPlane(g.position.y); if (!p) return;
+  const dx = p.x - g.position.x, dz = p.z - g.position.z; if (Math.hypot(dx, dz) < 0.25) return;
+  const a = Math.atan2(dx, dz);
+  if (placing.a0 == null) { placing.a0 = a; return; }
+  let r = placing.rot0 + a - placing.a0;
+  if (!e.shiftKey) { const st = Math.PI / 12; r = Math.round(r / st) * st; }
+  g.rotation.y = r; placing.deg = Math.round(((THREE.MathUtils.radToDeg(r) % 360) + 360) % 360);
+  dirty = true; drawPlan();
 }
 function movePlacing(e) {
   setNdc(e);
@@ -977,7 +998,8 @@ function movePlacing(e) {
     if (nrm.y > 0.7) {
       let g = hit.object; while (g.parent && !forms.includes(g)) g = g.parent;
       const box = new THREE.Box3().setFromObject(g), c = box.getCenter(new V3());
-      const tops = [new V3(c.x, box.max.y, c.z), ...g.userData.keys.map(k => g.localToWorld(k.clone())).filter(w => w.y > box.max.y - 0.05)];
+      const ws = g.userData.keys.map(k => g.localToWorld(k.clone()));
+      const tops = [new V3(c.x, box.max.y, c.z), ...[...ws, ...keyMidpoints(g, ws)].filter(w => w.y > box.max.y - 0.05)];
       let dmin = Infinity;
       for (const w of tops) { const d = w.distanceTo(hit.point) * (w === tops[0] ? 0.6 : 1); if (d < dmin) { dmin = d; best = w; } }
       bd = 0;
@@ -994,7 +1016,7 @@ function movePlacing(e) {
   placing.g.position.set(x, y, z);
   snapMark.position.set(x, y + 0.004, z); snapMark.visible = true;
   snapMark.children[2].visible = !best;          // grid crosshair only on the ground
-  snapMark.children[0].material.color.set(best ? 0x2f5bb7 : 0xe07400);
+  snapMark.children[0].material.color.set(!best ? 0xe07400 : best.mid ? 0x13935a : 0x2f5bb7);  // grid / midpoint / corner
   dirty = true;
 }
 $('bAdd').onclick = () => placing ? endPlacing(false) : startPlacing();
@@ -1293,7 +1315,9 @@ function explain(d, f, Lp, Fp) {
        S.view === 'free' ? 'orbit' : 'walk', S.view === 'free' ? 'Drag empty space to orbit' : 'Drag empty space to walk around the forms'),
     ic('<rect x="5.5" y="2" width="9" height="16" rx="4.5" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M10 5v4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>', 'zoom', 'Scroll or pinch to zoom'),
   ].join('') + '</span>';
-  const placeChip = placing ? '<span class="badge place">Click a grid point or a corner of another form · Esc to cancel</span>' : '';
+  const placeChip = !placing ? '' : placing.stage === 'rot'
+    ? `<span class="badge place">Move to rotate${placing.deg != null ? ' · ' + placing.deg + '°' : ''} · click to place · Shift = free · Esc to cancel</span>`
+    : '<span class="badge place">Click a grid point, corner or midpoint · then turn it · Esc to cancel</span>';
   $('readout').innerHTML = chips.join('') + placeChip + guide;
 }
 
@@ -1459,7 +1483,12 @@ function dragVP(v, mx) {
   syncSliders();
 }
 glc.addEventListener('pointerdown', e => {
-  if (placing) { if (e.button === 0) { movePlacing(e); endPlacing(true); } else endPlacing(false); e.preventDefault(); return; }
+  if (placing) {
+    e.preventDefault();
+    if (e.button !== 0) { endPlacing(false); return; }
+    if (placing.stage === 'rot') { endPlacing(true); return; }
+    movePlacing(e); placing.stage = 'rot'; placing.rot0 = placing.g.rotation.y; placing.a0 = null; dirty = true; return;
+  }
   setNdc(e);
   const gh = guideHit(stageXY(e));
   if (gh) {
@@ -1483,7 +1512,7 @@ glc.addEventListener('pointerdown', e => {
   if (drag) { glc.setPointerCapture(e.pointerId); controls.enabled = false; }
 });
 glc.addEventListener('pointermove', e => {
-  if (placing) { movePlacing(e); return; }
+  if (placing) { placing.stage === 'rot' ? rotatePlacing(e) : movePlacing(e); return; }
   if (!drag) {
     const gh = guideHit(stageXY(e));
     glc.style.cursor = !gh ? '' : gh.kind === 'vp' ? 'ew-resize' : 'ns-resize';
