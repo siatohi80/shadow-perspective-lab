@@ -177,6 +177,18 @@ input.sw:focus-visible{outline:3px solid var(--md-primary);outline-offset:2px}
 .c-light label.sl input[type=range]::-moz-range-progress{background:var(--ray)}
 .c-light label.sl input[type=range]{accent-color:var(--ray)}
 .vsliders{background:transparent;padding:4px 0 2px}
+/* camera pie menu on the viewport */
+.pie{position:absolute;inset:0;z-index:5;background:rgba(15,20,30,.08);touch-action:none}
+.pie svg{position:absolute;width:300px;height:300px;transform:translate(-50%,-50%);overflow:visible;filter:drop-shadow(0 6px 18px rgba(0,0,0,.18))}
+.pie .wedge{cursor:ew-resize}
+.pie .wedge path.bg{fill:color-mix(in srgb,var(--md-surface) 90%,transparent);stroke:color-mix(in srgb,var(--md-on-surface) 10%,transparent);stroke-width:1}
+.pie .wedge:hover path.bg{fill:color-mix(in srgb,var(--md-secondary-container) 92%,transparent)}
+.pie .wedge.on path.bg{fill:var(--md-primary-container)}
+.pie text{font-family:var(--font);fill:var(--md-on-surface);pointer-events:none}
+.pie .val{font-family:var(--mono);font-size:12px;fill:var(--md-on-surface-variant)}
+.pie-fab{position:absolute;right:12px;bottom:12px;z-index:4;width:48px;height:48px;border-radius:16px;border:0;background:var(--md-primary-container);color:var(--md-on-primary-container);display:grid;place-items:center;cursor:pointer;box-shadow:var(--elev1)}
+.pie-fab .msi{font-size:24px;width:24px}
+.pie-fab:hover{filter:brightness(.97)}
 .addrow{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:end}
 .selbox{display:grid;gap:10px;padding:12px;border-radius:var(--r-s);background:color-mix(in srgb,var(--md-surface) 70%,transparent)}
 .fields{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr);gap:10px}
@@ -243,6 +255,8 @@ label.chip:has(input:focus-visible){outline:3px solid var(--md-primary);outline-
   <div class="stage" id="stage">
     <canvas id="gl"></canvas>
     <canvas id="overlay"></canvas>
+    <button class="pie-fab" id="pieFab" title="Camera dial (or right-click the drawing)" aria-label="Open camera dial"><span class="msi" aria-hidden="true">tune</span></button>
+    <div class="pie" id="pie" hidden><svg id="pieSvg" viewBox="-130 -130 260 260" role="dialog" aria-label="Camera dial: drag a slice to change it"></svg></div>
     <div class="hint" id="hint">Drag a form to move it · drag the glowing bulb to move the light · drag empty space to walk around</div>
     <div class="readout" id="readout"></div>
     <div class="drop" id="drop" hidden>Drop a .glb, .gltf, .obj or .stl file</div>
@@ -260,7 +274,7 @@ label.chip:has(input:focus-visible){outline:3px solid var(--md-primary);outline-
         <button id="v4" aria-pressed="false"><span class="msi chk">check</span>3-pt</button>
         <button id="v3" aria-pressed="false"><span class="msi chk">check</span>Free</button>
       </div>
-      <div class="vsliders">
+      <div class="vsliders" hidden>
       <label class="vs" for="sAz"><output id="oAz"></output><span class="vtrack"><input id="sAz" type="range" min="-89" max="89" step="1" value="35"></span><span class="vl">Angle</span></label>
       <label class="vs" for="sEye"><output id="oEye"></output><span class="vtrack"><input id="sEye" type="range" min="0.3" max="40" step="0.1" value="4"></span><span class="vl">Eye</span></label>
       <label class="vs" for="sDist"><output id="oDist"></output><span class="vtrack"><input id="sDist" type="range" min="2" max="200" step="0.1" value="17"></span><span class="vl">Distance</span></label>
@@ -268,7 +282,7 @@ label.chip:has(input:focus-visible){outline:3px solid var(--md-primary);outline-
       <label class="vs" for="sTilt" id="lbTilt" hidden><output id="oTilt"></output><span class="vtrack"><input id="sTilt" type="range" min="-80" max="80" step="1" value="25"></span><span class="vl">Tilt</span></label>
       <label class="vs" for="sShift"><output id="oShift"></output><span class="vtrack"><input id="sShift" type="range" min="0.05" max="0.95" step="0.01" value="0.38"></span><span class="vl">Horizon</span></label>
       </div>
-      <div class="row"><button class="btn tonal" id="bFit"><span class="msi" aria-hidden="true">fit_screen</span>Fit view to forms</button></div>
+      <div class="row"><button class="btn filled" id="bPie" title="Or right-click the drawing"><span class="msi" aria-hidden="true">tune</span>Camera dial</button><button class="btn tonal" id="bFit"><span class="msi" aria-hidden="true">fit_screen</span>Fit view to forms</button></div>
       
     </section>
 
@@ -1406,6 +1420,105 @@ glc.addEventListener('pointerup', () => {
 });
 controls.addEventListener('change', () => dirty = true);
 
+// ---------------------------------------------------------------- camera pie menu (viewport)
+// Right-click the drawing, long-press it, or use the dial button: a ring of slices opens at that spot.
+// Drag on a slice (any direction) or scroll over it to change that setting; the outer arc shows where it sits in its range.
+const pie = $('pie'), pieSvg = $('pieSvg');
+const PIE_PARAMS = [
+  {key: 'az', label: 'Angle', min: -89, max: 89, step: 0.4, fmt: v => Math.round(v) + '°', views: ['1pt', '2pt', '3pt']},
+  {key: 'eye', label: 'Eye height', min: 0.3, max: 40, log: true, fmt: v => v.toFixed(1) + ' m', views: ['1pt', '2pt', '3pt']},
+  {key: 'dist', label: 'Distance', min: 2, max: 200, log: true, fmt: v => v.toFixed(1) + ' m', views: ['1pt', '2pt', '3pt']},
+  {key: 'lens', label: 'Lens', min: 8, max: 300, log: true, fmt: v => Math.round(v) + ' mm', views: ['1pt', '2pt', '3pt', 'free']},
+  {key: 'tilt', label: 'Tilt', min: -80, max: 80, step: 0.4, fmt: v => Math.round(v) + '°', views: ['3pt']},
+  {key: 'hz', label: 'Horizon', min: 0.05, max: 0.95, step: 0.003, fmt: v => Math.round(v * 100) + '%', views: ['1pt', '2pt']},
+];
+const pget = k => k === 'hz' ? 0.5 - S.shift : S[k];
+function pset(k, v) {
+  if (k === 'hz') S.shift = 0.5 - v; else S[k] = v;
+  if (k === 'az' && S.view !== '3pt') setViewButtons(Math.abs(S.az) < 0.5 ? '1pt' : '2pt', true);
+  syncSliders(); dirty = true;
+}
+const norm = (P, v) => P.log ? Math.log(v / P.min) / Math.log(P.max / P.min) : (v - P.min) / (P.max - P.min);
+function nudge(P, px) {   // px of drag -> new value (log params move by ratio)
+  const v = pget(P.key);
+  let nv = P.log ? v * Math.pow(P.max / P.min, px / 420) : v + px * P.step;
+  pset(P.key, Math.min(P.max, Math.max(P.min, nv)));
+}
+let pieAt = {x: 0, y: 0}, pieDrag = null;
+const R0 = 46, R1 = 124;
+function arcPath(r0, r1, a0, a1) {
+  const p = (r, a) => `${(r * Math.cos(a)).toFixed(2)} ${(r * Math.sin(a)).toFixed(2)}`, big = a1 - a0 > Math.PI ? 1 : 0;
+  return `M${p(r1, a0)} A${r1} ${r1} 0 ${big} 1 ${p(r1, a1)} L${p(r0, a1)} A${r0} ${r0} 0 ${big} 0 ${p(r0, a0)} Z`;
+}
+function drawPie() {
+  if (pie.hidden) return;
+  pieSvg.innerHTML = '';
+  const list = PIE_PARAMS.filter(P => P.views.includes(S.view));
+  const n = list.length, span = Math.PI * 2 / n, gap = 0.025;
+  list.forEach((P, i) => {
+    const a0 = -Math.PI / 2 - span / 2 + i * span + gap, a1 = a0 + span - 2 * gap, am = (a0 + a1) / 2;
+    const g = el('g', {class: 'wedge' + (pieDrag && pieDrag.P === P ? ' on' : ''), 'data-k': P.key}, pieSvg);
+    el('path', {class: 'bg', d: arcPath(R0, R1, a0, a1)}, g);
+    // range gauge along the outer edge
+    const ga0 = a0 + 0.06, ga1 = a1 - 0.06, f = Math.min(1, Math.max(0, norm(P, pget(P.key))));
+    el('path', {d: arcPath(R1 - 7, R1 - 4, ga0, ga1), fill: 'color-mix(in srgb, var(--md-on-surface) 12%, transparent)'}, g);
+    el('path', {d: arcPath(R1 - 7, R1 - 4, ga0, ga0 + (ga1 - ga0) * Math.max(0.002, f)), fill: 'var(--md-primary)'}, g);
+    const tx = Math.cos(am) * 84, ty = Math.sin(am) * 84;
+    el('text', {x: tx, y: ty - 3, 'text-anchor': 'middle', 'font-size': 13, 'font-weight': 500}, g).textContent = P.label;
+    el('text', {class: 'val', x: tx, y: ty + 14, 'text-anchor': 'middle'}, g).textContent = P.fmt(pget(P.key));
+  });
+  // centre: close button, or a big readout while dragging
+  const c = el('g', {'data-close': '1', style: 'cursor:pointer'}, pieSvg);
+  el('circle', {cx: 0, cy: 0, r: R0 - 6, fill: pieDrag ? 'var(--md-primary)' : 'color-mix(in srgb, var(--md-surface) 92%, transparent)', stroke: 'color-mix(in srgb, var(--md-on-surface) 10%, transparent)', 'data-close': '1'}, c);
+  if (pieDrag) {
+    el('text', {x: 0, y: -2, 'text-anchor': 'middle', 'font-size': 11, style: 'fill:var(--md-on-primary)'}, c).textContent = pieDrag.P.label;
+    el('text', {x: 0, y: 15, 'text-anchor': 'middle', 'font-size': 13, 'font-weight': 600, style: 'fill:var(--md-on-primary);font-family:var(--mono)'}, c).textContent = pieDrag.P.fmt(pget(pieDrag.P.key));
+  } else {
+    el('path', {d: 'M-8 -8L8 8M8 -8L-8 8', stroke: 'var(--md-on-surface-variant)', 'stroke-width': 2.4, 'stroke-linecap': 'round', 'data-close': '1'}, c);
+  }
+}
+function openPie(x, y) {
+  const W = stage.clientWidth, H = stage.clientHeight, m = 150;
+  pieAt = {x: Math.min(W - m + 10, Math.max(m - 10, x)), y: Math.min(H - m + 10, Math.max(m - 10, y))};
+  pieSvg.style.left = pieAt.x + 'px'; pieSvg.style.top = pieAt.y + 'px';
+  pie.hidden = false; drawPie();
+}
+function closePie() { pie.hidden = true; pieDrag = null; }
+glc.addEventListener('contextmenu', e => { e.preventDefault(); const r = stage.getBoundingClientRect(); openPie(e.clientX - r.left, e.clientY - r.top); });
+let lpTimer = null;   // long-press (touch) opens the pie too
+glc.addEventListener('pointerdown', e => {
+  if (e.pointerType !== 'touch') return;
+  const r = stage.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top;
+  clearTimeout(lpTimer); lpTimer = setTimeout(() => { drag = null; openPie(x, y); }, 550);
+});
+['pointerup', 'pointercancel'].forEach(t => glc.addEventListener(t, () => clearTimeout(lpTimer)));
+glc.addEventListener('pointermove', e => { if (e.pointerType === 'touch' && (Math.abs(e.movementX) + Math.abs(e.movementY) > 3)) clearTimeout(lpTimer); });
+$('pieFab').onclick = () => pie.hidden ? openPie(stage.clientWidth / 2, stage.clientHeight / 2) : closePie();
+$('bPie').onclick = () => openPie(stage.clientWidth / 2, stage.clientHeight / 2);
+pie.addEventListener('contextmenu', e => { e.preventDefault(); closePie(); });
+pie.addEventListener('pointerdown', e => {
+  const t = e.target, w = t.closest && t.closest('.wedge');
+  if (w) {
+    const P = PIE_PARAMS.find(q => q.key === w.getAttribute('data-k'));
+    pieDrag = {P, x: e.clientX, y: e.clientY}; pie.setPointerCapture(e.pointerId); drawPie(); return;
+  }
+  if (t.closest && t.closest('[data-close]')) { closePie(); return; }
+  if (t === pie) closePie();   // click on the backdrop
+});
+pie.addEventListener('pointermove', e => {
+  if (!pieDrag) return;
+  const px = (e.clientX - pieDrag.x) - (e.clientY - pieDrag.y);   // right or up = more
+  pieDrag.x = e.clientX; pieDrag.y = e.clientY;
+  nudge(pieDrag.P, px); drawPie();
+});
+pie.addEventListener('pointerup', () => { if (pieDrag) { pieDrag = null; drawPie(); } });
+pie.addEventListener('wheel', e => {
+  const w = e.target.closest && e.target.closest('.wedge'); if (!w) return;
+  e.preventDefault(); nudge(PIE_PARAMS.find(q => q.key === w.getAttribute('data-k')), -e.deltaY * 0.25); drawPie();
+}, {passive: false});
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && !pie.hidden) closePie(); });
+
+
 // ---------------------------------------------------------------- UI wiring
 const sliders = [['sAz', 'az', v => Math.round(v) + '°'], ['sEye', 'eye', v => (+v).toFixed(1) + ' m'], ['sDist', 'dist', v => (+v).toFixed(1) + ' m'],
   ['sLens', 'lens', v => Math.round(v) + ' mm'], ['sShift', 'shift', v => Math.round((0.5 - v) * 100) + '%'], ['sElev', 'sunEl', v => v + '°'], ['sTilt', 'tilt', v => Math.round(v) + '°']];
@@ -1463,7 +1576,7 @@ function setViewButtons(v, keepAz) {
     controls.enabled = false;
     $('hint').textContent = 'Drag a form to move it · drag the glowing bulb to move the light · drag empty space to walk around';
   }
-  syncSliders(); dirty = true;
+  syncSliders(); dirty = true; if (typeof drawPie === 'function') drawPie();
 }
 function fitView() {
   if (!forms.length) return;
@@ -1776,6 +1889,7 @@ function frame() {
   drawPlan();
   drawGizmos();
   fancies.forEach(f => f.update());
+  drawPie();
 }
 
 ['selForm', 'selWin', 'selWinN'].forEach(id => enhanceSelect($(id)));
