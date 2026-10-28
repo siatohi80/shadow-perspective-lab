@@ -172,17 +172,19 @@ label.chip:has(input:focus-visible){outline:3px solid var(--md-primary);outline-
     <section class="card c-view" aria-labelledby="h-view">
       <h2 id="h-view"><span class="msi" aria-hidden="true">visibility</span>Perspective</h2>
       <div class="seg" role="group" aria-label="Perspective type">
-        <button id="v1" aria-pressed="false"><span class="msi chk">check</span>1-point</button>
-        <button id="v2" aria-pressed="true"><span class="msi chk">check</span>2-point</button>
-        <button id="v3" aria-pressed="false"><span class="msi chk">check</span>Free orbit</button>
+        <button id="v1" aria-pressed="false"><span class="msi chk">check</span>1-pt</button>
+        <button id="v2" aria-pressed="true"><span class="msi chk">check</span>2-pt</button>
+        <button id="v4" aria-pressed="false"><span class="msi chk">check</span>3-pt</button>
+        <button id="v3" aria-pressed="false"><span class="msi chk">check</span>Free</button>
       </div>
-      <label class="sl" for="sAz">Viewing angle<input id="sAz" type="range" min="-75" max="75" step="1" value="35"><output id="oAz"></output></label>
-      <label class="sl" for="sEye">Eye height<input id="sEye" type="range" min="0.3" max="20" step="0.1" value="4"><output id="oEye"></output></label>
-      <label class="sl" for="sDist">Distance<input id="sDist" type="range" min="2" max="45" step="0.1" value="17"><output id="oDist"></output></label>
-      <label class="sl" for="sLens">Focal length<input id="sLens" type="range" min="14" max="85" step="1" value="24"><output id="oLens"></output></label>
+      <label class="sl" for="sAz">Viewing angle<input id="sAz" type="range" min="-89" max="89" step="1" value="35"><output id="oAz"></output></label>
+      <label class="sl" for="sEye">Eye height<input id="sEye" type="range" min="0.3" max="40" step="0.1" value="4"><output id="oEye"></output></label>
+      <label class="sl" for="sDist">Distance<input id="sDist" type="range" min="2" max="200" step="0.1" value="17"><output id="oDist"></output></label>
+      <label class="sl" for="sLens">Focal length<input id="sLens" type="range" min="8" max="300" step="1" value="24"><output id="oLens"></output></label>
+      <label class="sl" for="sTilt" id="lbTilt" hidden>Camera tilt<input id="sTilt" type="range" min="-80" max="80" step="1" value="25"><output id="oTilt"></output></label>
       <label class="sl" for="sShift">Horizon in frame<input id="sShift" type="range" min="-0.45" max="0.45" step="0.01" value="0.12"><output id="oShift"></output></label>
       <div class="row"><button class="btn tonal" id="bFit"><span class="msi" aria-hidden="true">fit_screen</span>Fit view to forms</button></div>
-      <p class="note">The camera stays level, so verticals stay vertical. Angle 0° gives one-point perspective; any other angle gives two-point. Free orbit lets the camera tilt (three-point).</p>
+      <p class="note">1- and 2-point keep the camera level, so verticals stay vertical. In 2-point, drag VPL or VPR along the horizon: spreading them apart gives a longer lens, pulling one toward the centre turns the view. Drag the horizon line up or down to move it in the frame. 3-point tilts the camera so verticals meet at VP3; drag VP3 or use Camera tilt.</p>
     </section>
 
     <section class="card c-light" aria-labelledby="h-light">
@@ -724,7 +726,7 @@ for (const [k, v] of Object.entries(LIB)) {
 
 // ---------------------------------------------------------------- state
 const S = {
-  view: '2pt', az: 35, eye: 4, dist: 17, lens: 24, shift: 0.12,
+  view: '2pt', az: 35, eye: 4, dist: 17, lens: 24, shift: 0.12, tilt: 25,
   light: 'sun', sunAz: 0, sunEl: 35, pPos: new V3(-3, 7, 5),
   showHL: true, showEdges: true, showRays: true, showShad: true, all: false,
 };
@@ -743,7 +745,13 @@ function applyCamera() {
   const w = stage.clientWidth, h = stage.clientHeight;
   camera.aspect = w / h;
   camera.setFocalLength(S.lens);
-  if (S.view !== 'free') {
+  if (S.view === '3pt') {
+    // three-point: same station point, but the camera tilts up or down, so verticals converge to VP3
+    const d = viewerDir();
+    camera.position.copy(target).addScaledVector(d, S.dist).setY(S.eye);
+    camera.rotation.set(THREE.MathUtils.degToRad(S.tilt), THREE.MathUtils.degToRad(S.az), 0, 'YXZ');
+    camera.clearViewOffset();
+  } else if (S.view !== 'free') {
     const d = viewerDir();
     camera.position.copy(target).addScaledVector(d, S.dist).setY(S.eye);
     camera.up.set(0, 1, 0);
@@ -822,6 +830,7 @@ function sphereOutline(g, d, Lw) {
   return out;
 }
 function css(n) { return getComputedStyle(document.documentElement).getPropertyValue(n).trim(); }
+const HIT = {vps: [], hlY: null, vp3: null};
 const COL = {hl: '#1f5ac8', ray: '#e07400', shad: '#13935a', pt: '#d21f2c', grey: '#8a8a8a', ink: '#1d2329'};
 
 function line(a, b, col, w = 1.5, dash = null) {
@@ -870,10 +879,26 @@ function drawOverlay() {
   const ry = ref ? ref.rotation.y : 0;
   const ax = [new V3(1, 0, 0).applyAxisAngle(new V3(0, 1, 0), ry), new V3(0, 0, 1).applyAxisAngle(new V3(0, 1, 0), ry)];
   const vps = ax.map(vpOf);
+  HIT.vps = []; HIT.hlY = hlY; HIT.vp3 = null;
   if (S.showHL) {
-    const named = vps.filter(Boolean).sort((a, b) => a.x - b.x);
+    const named = vps.map((p, i) => p && {p, axis: ax[i]}).filter(Boolean).sort((a, b) => a.p.x - b.p.x);
     const names = named.length === 2 ? ['VPL', 'VPR'] : ['VP'];
-    named.forEach((p, i) => inside(p) ? (dot(p, 4.5, COL.hl), tag(p, names[i], COL.hl, 8, 18)) : edgeArrow(p, names[i] + ' off page', COL.hl));
+    named.forEach((v, i) => {
+      const p = v.p, drag = S.view === '2pt';
+      const q = inside(p) ? p : {x: Math.min(Math.max(p.x, 10), ov.clientWidth - 10), y: Math.min(Math.max(p.y, 10), ov.clientHeight - 10)};
+      if (inside(p)) { dot(p, drag ? 7 : 4.5, COL.hl, drag ? '#fff' : null); tag(p, names[i] + (drag ? '  ↔ drag' : ''), COL.hl, 10, 20); }
+      else edgeArrow(p, names[i] + ' off page', COL.hl);
+      HIT.vps.push({q, p, axis: v.axis, name: names[i]});
+    });
+    if (S.view === '3pt') {
+      const v3 = vpOf(new V3(0, 1, 0));
+      if (v3) {
+        const q = inside(v3) ? v3 : {x: Math.min(Math.max(v3.x, 10), ov.clientWidth - 10), y: Math.min(Math.max(v3.y, 10), ov.clientHeight - 10)};
+        if (inside(v3)) { dot(v3, 7, '#7a3db8', '#fff'); tag(v3, 'VP3  verticals  ↕ drag', '#7a3db8', 10, S.tilt > 0 ? 20 : -12); }
+        else edgeArrow(v3, 'VP3 off page', '#7a3db8');
+        HIT.vp3 = {q, p: v3};
+      }
+    }
   }
   if (S.showEdges && ref && !ref.userData.noEdges) {
     // extend the reference form's base and top edges to their VPs
@@ -887,6 +912,14 @@ function drawOverlay() {
         const A = toScreen(a), B = toScreen(b); if (!A || !B) continue;
         const far = Math.hypot(A.x - vp.x, A.y - vp.y) > Math.hypot(B.x - vp.x, B.y - vp.y) ? A : B;
         line(far, vp, 'rgba(31,90,200,.38)', 1, [5, 5]);
+      }
+      if (S.view === '3pt') {
+        const v3 = vpOf(new V3(0, 1, 0));
+        if (v3) for (let i = 0; i < 4; i++) {
+          const A = toScreen(pts[i]), B = toScreen(base[i]); if (!A || !B) continue;
+          const far = Math.hypot(A.x - v3.x, A.y - v3.y) > Math.hypot(B.x - v3.x, B.y - v3.y) ? A : B;
+          line(far, v3, 'rgba(122,61,184,.45)', 1, [5, 5]);
+        }
       }
     }
   }
@@ -949,7 +982,7 @@ function drawOverlay() {
 function explain(d, f, Lp, Fp) {
   const fh = f.clone().setY(0).normalize();
   let msg, chips = [];
-  const persp = S.view === 'free' ? 'Free orbit (camera may tilt: three-point)' : (Math.abs(S.az % 90) < 0.5 ? 'One-point perspective' : 'Two-point perspective');
+  const persp = S.view === 'free' ? 'Free orbit' : S.view === '3pt' ? `Three-point perspective (tilt ${Math.round(S.tilt)}°)` : (Math.abs(S.az % 90) < 0.5 ? 'One-point perspective' : 'Two-point perspective');
   chips.push(`<span class="badge">${persp}</span>`);
   chips.push(`<span class="badge alt">eye ${S.eye.toFixed(1)} m</span>`);
   if (S.light === 'sun') {
@@ -1031,8 +1064,46 @@ const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
 let drag = null;
 function setNdc(e) { const r = glc.getBoundingClientRect(); ndc.set((e.clientX - r.left) / r.width * 2 - 1, -(e.clientY - r.top) / r.height * 2 + 1); ray.setFromCamera(ndc, camera); }
 function hitPlane(y) { const p = new V3(); return ray.ray.intersectPlane(new THREE.Plane(new V3(0, 1, 0), -y), p) ? p : null; }
+function stageXY(e) { const r = glc.getBoundingClientRect(); return {x: e.clientX - r.left, y: e.clientY - r.top}; }
+function guideHit(m) {
+  if (S.view === '2pt') for (const v of HIT.vps) if (Math.hypot(m.x - v.q.x, m.y - v.q.y) < 16) return {kind: 'vp', v};
+  if (S.view === '3pt' && HIT.vp3 && Math.hypot(m.x - HIT.vp3.q.x, m.y - HIT.vp3.q.y) < 16) return {kind: 'vp3'};
+  if ((S.view === '1pt' || S.view === '2pt') && HIT.hlY != null && Math.abs(m.y - HIT.hlY) < 6) return {kind: 'hl'};
+  return null;
+}
+const focalPx = () => camera.projectionMatrix.elements[0] * ov.clientWidth / 2;
+// drag a two-point VP along the horizon: the other VP stays put, the centre of vision stays in the middle,
+// so the focal length (spread of the VPs) and the viewing angle are solved from the two VP positions
+function dragVP(v, mx) {
+  const W = ov.clientWidth, cx = W / 2;
+  const other = v.other; if (!other) return;   // the other VP stays exactly where it was when the drag began
+  const isLeft = v.isLeft;
+  const x = isLeft ? Math.min(mx, cx - 8) : Math.max(mx, cx + 8);
+  const xl = isLeft ? x : other.x, xr = isLeft ? other.x : x;
+  const a = cx - xl, b = xr - cx; if (a <= 0 || b <= 0) return;
+  const f0 = focalPx(), lens0 = S.lens;
+  let fNew = Math.sqrt(a * b);
+  const lens = Math.min(300, Math.max(8, lens0 * fNew / f0)); fNew = f0 * lens / lens0;
+  S.dist = Math.min(200, Math.max(2, S.dist * lens / lens0)); S.lens = lens;
+  // search the station angle that puts both VPs where they should be (cheap: only matrices are updated)
+  const axL = isLeft ? v.axis : other.axis, axR = isLeft ? other.axis : v.axis;
+  const err = az => { S.az = az; applyCamera(); const pl = vpOf(axL), pr = vpOf(axR); return (pl && pr) ? Math.abs(pl.x - xl) + Math.abs(pr.x - xr) : 1e9; };
+  const keep = S.az; let best = {az: keep, err: err(keep)};
+  for (let az = -89; az <= 89; az += 1) { const e = err(az); if (e < best.err) best = {az, err: e}; }
+  for (let az = best.az - 1; az <= best.az + 1; az += 0.05) { const e = err(az); if (e < best.err) best = {az, err: e}; }
+  S.az = Math.max(-89, Math.min(89, best.az));
+  syncSliders();
+}
 glc.addEventListener('pointerdown', e => {
   setNdc(e);
+  const gh = guideHit(stageXY(e));
+  if (gh) {
+    if (gh.kind === 'vp') {
+      const o = HIT.vps.find(u => u !== gh.v);
+      gh.v = {axis: gh.v.axis.clone(), isLeft: !!o && gh.v.p.x < o.p.x, other: o && {x: o.p.x, axis: o.axis.clone()}};
+    }
+    drag = gh; glc.setPointerCapture(e.pointerId); controls.enabled = false; return;
+  }
   if (S.light === 'point' && ray.intersectObject(bulb).length) { drag = {kind: 'light'}; }
   else {
     const hits = ray.intersectObjects(forms, true).filter(h => h.object.isMesh);
@@ -1047,11 +1118,23 @@ glc.addEventListener('pointerdown', e => {
   if (drag) { glc.setPointerCapture(e.pointerId); controls.enabled = false; }
 });
 glc.addEventListener('pointermove', e => {
-  if (!drag) return; setNdc(e);
+  if (!drag) {
+    const gh = guideHit(stageXY(e));
+    glc.style.cursor = !gh ? '' : gh.kind === 'vp' ? 'ew-resize' : 'ns-resize';
+    return;
+  }
+  setNdc(e);
+  if (drag.kind === 'vp') { dragVP(drag.v, stageXY(e).x); dirty = true; return; }
+  if (drag.kind === 'hl') { S.shift = Math.max(-0.45, Math.min(0.45, stageXY(e).y / ov.clientHeight - 0.5)); syncSliders(); dirty = true; return; }
+  if (drag.kind === 'vp3') {
+    const fy = camera.projectionMatrix.elements[5] * ov.clientHeight / 2, dy = ov.clientHeight / 2 - stageXY(e).y;
+    const t = Math.sign(dy || 1) * THREE.MathUtils.radToDeg(Math.atan(fy / Math.max(1, Math.abs(dy))));
+    S.tilt = Math.max(-80, Math.min(80, Math.abs(t) < 3 ? 3 * Math.sign(t || 1) : t)); syncSliders(); dirty = true; return;
+  }
   if (drag.kind === 'light') { const p = hitPlane(S.pPos.y); if (p) { S.pPos.set(p.x, S.pPos.y, p.z); } }
   else if (drag.kind === 'form') { const p = hitPlane(0); if (p) drag.g.position.set(p.x + drag.off.x, 0, p.z + drag.off.z); }
   else if (drag.kind === 'walk') {
-    S.az = Math.max(-75, Math.min(75, drag.az - (e.clientX - drag.x) * 0.25));
+    S.az = Math.max(-89, Math.min(89, drag.az - (e.clientX - drag.x) * 0.25));
     S.eye = Math.max(0.3, Math.min(20, drag.eye + (e.clientY - drag.y) * 0.03));
     syncSliders();
   }
@@ -1064,15 +1147,15 @@ glc.addEventListener('pointerup', () => {
 controls.addEventListener('change', () => dirty = true);
 
 // ---------------------------------------------------------------- UI wiring
-const sliders = [['sAz', 'az', v => v + '°'], ['sEye', 'eye', v => (+v).toFixed(1) + ' m'], ['sDist', 'dist', v => (+v).toFixed(1) + ' m'],
-  ['sLens', 'lens', v => v + ' mm'], ['sShift', 'shift', v => (+v).toFixed(2)], ['sElev', 'sunEl', v => v + '°']];
+const sliders = [['sAz', 'az', v => Math.round(v) + '°'], ['sEye', 'eye', v => (+v).toFixed(1) + ' m'], ['sDist', 'dist', v => (+v).toFixed(1) + ' m'],
+  ['sLens', 'lens', v => Math.round(v) + ' mm'], ['sShift', 'shift', v => (+v).toFixed(2)], ['sElev', 'sunEl', v => v + '°'], ['sTilt', 'tilt', v => Math.round(v) + '°']];
 function syncSliders() {
   for (const [id, key, fmt] of sliders) { $(id).value = S[key]; $('o' + id.slice(1)).textContent = fmt(S[key]); }
   $('sLH').value = S.pPos.y; $('oLH').textContent = S.pPos.y.toFixed(1) + ' m';
 }
 for (const [id, key, fmt] of sliders) $(id).addEventListener('input', e => {
   S[key] = +e.target.value; $('o' + id.slice(1)).textContent = fmt(S[key]);
-  if (key === 'az') setViewButtons(Math.abs(S.az) < 0.5 ? '1pt' : '2pt', true);
+  if (key === 'az' && S.view !== '3pt') setViewButtons(Math.abs(S.az) < 0.5 ? '1pt' : '2pt', true);
   dirty = true;
 });
 $('sLH').addEventListener('input', e => { S.pPos.y = +e.target.value; $('oLH').textContent = S.pPos.y.toFixed(1) + ' m'; dirty = true; });
@@ -1097,9 +1180,21 @@ $('sRot').addEventListener('input', e => { if (!selected) return; selected.rotat
 function setViewButtons(v, keepAz) {
   if (S.view === 'free' && v !== 'free') { target = viewTarget(); }
   S.view = v;
-  $('v1').setAttribute('aria-pressed', v === '1pt'); $('v2').setAttribute('aria-pressed', v === '2pt'); $('v3').setAttribute('aria-pressed', v === 'free');
-  for (const id of ['sAz', 'sEye', 'sDist', 'sShift']) $(id).disabled = v === 'free';
-  if (!keepAz) { if (v === '1pt') S.az = 0; if (v === '2pt' && Math.abs(S.az) < 1) S.az = 35; }
+  $('v1').setAttribute('aria-pressed', v === '1pt'); $('v2').setAttribute('aria-pressed', v === '2pt'); $('v3').setAttribute('aria-pressed', v === 'free'); $('v4').setAttribute('aria-pressed', v === '3pt');
+  for (const id of ['sAz', 'sEye', 'sDist']) $(id).disabled = v === 'free';
+  $('sShift').disabled = v === 'free' || v === '3pt';
+  $('lbTilt').hidden = v !== '3pt';
+  if (!keepAz) { if (v === '1pt') S.az = 0; if ((v === '2pt' || v === '3pt') && Math.abs(S.az) < 1) S.az = 35; }
+  if (v === '3pt' && !keepAz) {
+    // bird's-eye start: raise the eye and aim down at the forms, so verticals converge to VP3 below
+    // and the cast shadows stay in view (drag VP3 above the horizon for a worm's-eye view)
+    const box = new THREE.Box3(); forms.forEach(g => box.expandByObject(g));
+    const sz = box.isEmpty() ? new V3(3, 3, 3) : box.getSize(new V3());
+    const span = Math.max(sz.x, sz.z, sz.y);
+    target = viewTarget();
+    S.lens = 24; S.tilt = -22; S.dist = Math.min(150, span * 2.4 + 6);
+    S.eye = Math.min(40, sz.y * 0.4 + S.dist * Math.tan(THREE.MathUtils.degToRad(22)));  // aim at the forms, horizon stays in frame
+  }
   if (v === 'free') {
     applyCamera(); camera.clearViewOffset(); camera.updateProjectionMatrix();
     controls.target.set(target.x, 1.5, target.z); controls.enabled = true; controls.update();
@@ -1127,6 +1222,7 @@ function fitView() {
 }
 $('bFit').onclick = fitView;
 $('v1').onclick = () => setViewButtons('1pt');
+$('v4').onclick = () => setViewButtons('3pt');
 $('v2').onclick = () => setViewButtons('2pt');
 $('v3').onclick = () => setViewButtons('free');
 
