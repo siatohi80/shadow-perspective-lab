@@ -1384,7 +1384,7 @@ function drawPlan() {
   el('text', {x: -12.2, y: 11.6, 'font-size': .8, fill: 'var(--md-on-surface-variant)', 'font-family': mono}).textContent = nice + ' m';
   // light presets as labels on the ring
   const yAx = new V3(0, 1, 0);
-  const zones = [['front', vd.clone().applyAxisAngle(yAx, 0.5), 'in front'], ['back', vd.clone().negate(), 'behind'], ['left', rt.clone().negate(), 'L'], ['right', rt, 'R']];
+  const zones = [['front', vd.clone().applyAxisAngle(yAx, 0.5), 'FRONT'], ['back', vd.clone().negate(), 'BEHIND'], ['left', rt.clone().negate(), 'L'], ['right', rt, 'R']];
   for (const [kind, d, txt] of zones) {   // sit on the ring, outside the area the forms use
     const x = d.x * 11, y = d.z * 11, w = txt.length * 0.62 + 0.9;
     const g = el('g', {'data-role': 'zone', 'data-kind': kind, style: 'cursor:pointer'});
