@@ -79,7 +79,10 @@ body{margin:0;background:var(--md-surface);color:var(--md-on-surface);font:400 1
 .stage{flex:1;min-height:420px;position:relative;min-width:0;border-radius:var(--r-l);overflow:hidden;background:#fbfbf8;touch-action:none;box-shadow:var(--elev1)}
 .stage canvas{display:block;position:absolute;inset:0;width:100%;height:100%}
 #overlay{pointer-events:none}
-.readout{position:absolute;left:12px;bottom:12px;right:12px;display:flex;flex-wrap:wrap;gap:8px;pointer-events:none}
+.readout{position:absolute;left:12px;bottom:12px;right:12px;display:flex;flex-wrap:wrap;align-items:center;gap:8px;pointer-events:none}
+.guides{margin-left:auto;display:flex;gap:4px;pointer-events:auto;background:#ffffffd9;border-radius:var(--r-s);padding:3px 6px}
+.gd{display:inline-flex;align-items:center;gap:4px;font:500 11px/16px var(--font);color:#5b5d66;padding:3px 5px;cursor:help}
+.gd svg{width:18px;height:18px;color:#44464f}
 .badge{font:500 12px/16px var(--font);background:#dae2ff;color:#001946;border-radius:var(--r-s);padding:6px 10px}
 .badge.alt{background:#ffffffee;color:#44464f;border:1px solid #c5c6d0}
 .hint{position:absolute;right:12px;bottom:12px;font-size:12px;color:#44464f;background:#ffffffe6;padding:6px 10px;border-radius:var(--r-s);pointer-events:none;max-width:60%}
@@ -262,7 +265,6 @@ label.chip:has(input:focus-visible){outline:3px solid var(--md-primary);outline-
     <canvas id="gl"></canvas>
     <canvas id="overlay"></canvas>
     <div class="pie-float" id="pieFloat" title="Camera dial: drag a slice to change it, drag the centre to move the dial"><svg id="pieSvg" viewBox="-130 -130 260 260" role="group" aria-label="Camera dial"></svg><button class="pie-hide" id="pieHide" title="Hide the camera dial (turn it back on in Perspective)" aria-label="Hide camera dial"><span class="msi" aria-hidden="true">visibility_off</span></button></div>
-    <div class="hint" id="hint">Drag a form or the bulb to move it · drag empty space to walk around · scroll to zoom</div>
     <div class="readout" id="readout"></div>
     <div class="drop" id="drop" hidden>Drop a .glb, .gltf, .obj or .stl file</div>
   </div>
@@ -389,7 +391,7 @@ sun.shadow.bias = -0.00015; sun.shadow.normalBias = 0;  // no offset: shadows st
 scene.add(sun); scene.add(sun.target);
 const plight = new THREE.PointLight(0xffffff, 0.75, 0, 1);
 plight.castShadow = true; plight.shadow.mapSize.set(2048, 2048);
-plight.shadow.camera.near = 0.05; plight.shadow.camera.far = 400; plight.shadow.bias = -0.0004; plight.shadow.normalBias = 0;
+plight.shadow.camera.near = 0.05; plight.shadow.camera.far = 400; plight.shadow.bias = -0.00005; plight.shadow.normalBias = 0;
 scene.add(plight);
 const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.22, 24, 12), new THREE.MeshBasicMaterial({color: 0xffa21f}));
 bulb.castShadow = false; scene.add(bulb);
@@ -1212,7 +1214,17 @@ function explain(d, f, Lp, Fp) {
       msg += ' Some corners are higher than the light, so they cast no ground shadow.';
   }
   $('explain').textContent = msg;
-  $('readout').innerHTML = chips.join('');
+  // controls guide: small pictograms instead of a sentence (hover for the full tip)
+  const ic = (d, t, tip) => `<span class="gd" title="${tip}"><svg viewBox="0 0 20 20" aria-hidden="true">${d}</svg>${t}</span>`;
+  const guide = '<span class="guides" aria-label="Controls">' + [
+    ic('<rect x="2.5" y="7" width="8" height="8" rx="1" fill="none" stroke="currentColor" stroke-width="1.5"/>' + '<path d="M11 5v8.5l2-1.8 1.6 3.6 1.4-.6-1.6-3.6H17z" fill="currentColor"/>', 'move', 'Drag a form to move it'),
+    S.light === 'point' ? ic('<circle cx="7" cy="7" r="3.6" fill="#ffa21f"/><path d="M7 11v6" stroke="currentColor" stroke-width="1.4" stroke-dasharray="2 1.5"/><path d="M11 6v8.5l2-1.8 1.6 3.6 1.4-.6-1.6-3.6H17z" fill="currentColor"/>', 'light', 'Drag the glowing bulb to move the light') : '',
+    ic(S.view === 'free' ? '<path d="M3 10a7 3.2 0 1 0 14 0a7 3.2 0 1 0-14 0" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M15.5 6.5l1.7 3.2-3.4.4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>'
+                        : '<path d="M10 2v16M2 10h16M10 2l-2.5 2.5M10 2l2.5 2.5M10 18l-2.5-2.5M10 18l2.5-2.5M2 10l2.5-2.5M2 10l2.5 2.5M18 10l-2.5-2.5M18 10l-2.5 2.5" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>',
+       S.view === 'free' ? 'orbit' : 'walk', S.view === 'free' ? 'Drag empty space to orbit' : 'Drag empty space to walk around the forms'),
+    ic('<rect x="5.5" y="2" width="9" height="16" rx="4.5" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M10 5v4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>', 'zoom', 'Scroll or pinch to zoom'),
+  ].join('') + '</span>';
+  $('readout').innerHTML = chips.join('') + guide;
 }
 
 // ---------------------------------------------------------------- plan view (SVG)
@@ -1639,10 +1651,8 @@ function setViewButtons(v, keepAz) {
   if (v === 'free') {
     applyCamera(); camera.clearViewOffset(); camera.updateProjectionMatrix();
     controls.target.set(target.x, 1.5, target.z); controls.enabled = true; controls.update();
-    $('hint').textContent = 'Drag empty space to orbit · scroll to zoom · drag forms or the bulb to move them';
   } else {
     controls.enabled = false;
-    $('hint').textContent = 'Drag a form or the bulb to move it · drag empty space to walk around · scroll to zoom';
   }
   syncSliders(); dirty = true; if (typeof drawDials === 'function') drawDials();
 }
