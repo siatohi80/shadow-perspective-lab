@@ -1238,6 +1238,12 @@ function drawPlan() {
     el('path', {d: `M${hx - .3} ${hz} A .3 .3 0 1 1 ${hx} ${hz + .3}`, stroke: 'var(--md-primary)', 'stroke-width': .09, fill: 'none', 'pointer-events': 'none'});
     const sx = cx + Math.cos(a) * rr * .72 + rx * rr * .72, sz = cz - Math.sin(a) * rr * .72 + rz * rr * .72;   // scale handle on the diagonal
     el('rect', {x: sx - .5, y: sz - .5, width: 1, height: 1, rx: .15, fill: 'var(--md-surface)', stroke: 'var(--md-primary)', 'stroke-width': .12, 'data-role': 'scale', style: 'cursor:nwse-resize'});
+    // red × on the opposite corner removes the form
+    const dx = 2 * cx - sx, dz = 2 * cz - sz;
+    const del = el('g', {'data-role': 'del', style: 'cursor:pointer'});
+    el('title', {}, del).textContent = 'Remove this form (Delete key)';
+    el('circle', {cx: dx, cy: dz, r: .66, fill: '#d93025', stroke: 'var(--md-surface)', 'stroke-width': .12, 'data-role': 'del'}, del);
+    el('path', {d: `M${dx - .27} ${dz - .27}L${dx + .27} ${dz + .27}M${dx + .27} ${dz - .27}L${dx - .27} ${dz + .27}`, stroke: '#fff', 'stroke-width': .16, 'stroke-linecap': 'round', 'data-role': 'del'}, del);
   }
   // light
   let lx, lz;
@@ -1261,6 +1267,7 @@ plan.addEventListener('pointerdown', e => {
   const role = e.target.getAttribute && e.target.getAttribute('data-role');
   const p = planPoint(e);
   if (role === 'zone') { placeRel(e.target.getAttribute('data-kind')); return; }
+  if (role === 'del') { deleteSelected(); return; }
   if (role === 'form') {
     const g = forms[+e.target.getAttribute('data-i')]; select(g);
     planDrag = {kind: 'form', g, dx: g.position.x - p.x, dz: g.position.z - p.z};
@@ -1487,7 +1494,17 @@ function placeRel(kind) { // presets relative to the current viewer
   dirty = true;
 }
 
-$('bDel').onclick = () => { if (selected) removeForm(selected); dirty = true; };
+function deleteSelected() {
+  if (!selected) return;
+  removeForm(selected);
+  if (S.view !== 'free' && forms.length) target = viewTarget();
+  dirty = true;
+}
+$('bDel').onclick = deleteSelected;
+// Delete / Backspace removes the selected form (not while typing in a field)
+document.addEventListener('keydown', e => {
+  if ((e.key === 'Delete' || e.key === 'Backspace') && selected && !/^(INPUT|SELECT|TEXTAREA)$/.test(document.activeElement.tagName)) { e.preventDefault(); deleteSelected(); }
+});
 $('bClear').onclick = () => { [...forms].forEach(removeForm); dirty = true; };
 const checks = {cHL: 'showHL', cEdges: 'showEdges', cRays: 'showRays', cShad: 'showShad'};
 function setScope(all) { S.all = all; $('scSel').setAttribute('aria-pressed', !all); $('scAll').setAttribute('aria-pressed', all); dirty = true; }
