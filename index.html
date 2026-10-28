@@ -1470,14 +1470,14 @@ function makeDial(svg, movable) {
       // track + value as stroked arcs with round ends (same blue in both themes: the drawing is always light)
       const rg = R1 - 9, arc = (b0, b1) => `M${(rg * Math.cos(b0)).toFixed(2)} ${(rg * Math.sin(b0)).toFixed(2)} A${rg} ${rg} 0 ${b1 - b0 > Math.PI ? 1 : 0} 1 ${(rg * Math.cos(b1)).toFixed(2)} ${(rg * Math.sin(b1)).toFixed(2)}`;
       el('path', {d: arc(ga0, ga1), fill: 'none', stroke: 'rgba(138,71,8,.20)', 'stroke-width': 10, 'stroke-linecap': 'round'}, g);
-      el('path', {d: arc(ga0, ga0 + (ga1 - ga0) * Math.max(0.001, f)), fill: 'none', stroke: '#2f5bb7', 'stroke-width': 10, 'stroke-linecap': 'round'}, g);
+      el('path', {d: arc(ga0, ga0 + (ga1 - ga0) * Math.max(0.001, f)), fill: 'none', stroke: 'rgba(47,91,183,.62)', 'stroke-width': 10, 'stroke-linecap': 'round'}, g);
       const tx = Math.cos(am) * 72, ty = Math.sin(am) * 72;   // keeps labels clear of the gauge ring
       el('text', {x: tx, y: ty - 3, 'text-anchor': 'middle', 'font-size': 15, 'font-weight': 600}, g).textContent = P.label;
       el('text', {class: 'val', x: tx, y: ty + 15, 'text-anchor': 'middle', 'font-size': 13.5}, g).textContent = P.fmt(pget(P.key));
     });
     const live = pieDrag && pieDrag.P && pieDrag.dial === d;
     const hub = el('g', {'data-hub': '1', style: movable ? 'cursor:move' : ''}, svg);
-    el('circle', {cx: 0, cy: 0, r: R0 - 5, fill: live ? '#2f5bb7' : 'var(--dial-hub)', stroke: 'var(--dial-bd)', 'data-hub': '1'}, hub);
+    el('circle', {cx: 0, cy: 0, r: R0 - 5, fill: live ? 'rgba(47,91,183,.75)' : 'var(--dial-hub)', stroke: 'var(--dial-bd)', 'data-hub': '1'}, hub);
     if (live) {
       el('text', {x: 0, y: 7, 'text-anchor': 'middle', 'font-size': 16, 'font-weight': 700, style: 'fill:#fff;font-family:var(--mono)'}, hub).textContent = pieDrag.P.fmt(pget(pieDrag.P.key));
     } else if (movable) {   // four-way arrows: drag here to move the dial
