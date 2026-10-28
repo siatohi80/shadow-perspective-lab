@@ -1486,9 +1486,9 @@ function makeDial(svg, movable) {
     });
     const live = pieDrag && pieDrag.P && pieDrag.dial === d;
     const hub = el('g', {'data-hub': '1', style: movable ? 'cursor:move' : ''}, svg);
-    el('circle', {cx: 0, cy: 0, r: R0 - 5, fill: live ? 'rgba(47,91,183,.75)' : 'var(--dial-hub)', stroke: 'var(--dial-bd)', 'data-hub': '1'}, hub);
+    el('circle', {cx: 0, cy: 0, r: R0 - 5, fill: live ? '#2f5bb7' : 'var(--dial-hub)', stroke: 'var(--dial-bd)', 'data-hub': '1'}, hub);
     if (live) {
-      el('text', {x: 0, y: 7, 'text-anchor': 'middle', 'font-size': 16, 'font-weight': 700, style: 'fill:#fff;font-family:var(--mono)'}, hub).textContent = pieDrag.P.fmt(pget(pieDrag.P.key));
+      el('text', {x: 0, y: 7, 'text-anchor': 'middle', 'font-size': 16, 'font-weight': 700, style: 'fill:#fff;stroke:none;font-family:var(--mono)'}, hub).textContent = pieDrag.P.fmt(pget(pieDrag.P.key));
     } else if (movable) {   // four-way arrows: drag here to move the dial
       el('path', {d: 'M0 -15V15M-15 0H15M0 -15l-5 5M0 -15l5 5M0 15l-5 -5M0 15l5 -5M-15 0l5 -5M-15 0l5 5M15 0l-5 -5M15 0l-5 5', stroke: 'var(--dial-ink2)', 'stroke-width': 2.4, 'stroke-linecap': 'round', fill: 'none', 'data-hub': '1'}, hub);
     } else {
