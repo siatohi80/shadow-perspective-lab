@@ -256,7 +256,6 @@ label.chip:has(input:focus-visible){outline:3px solid var(--md-primary);outline-
     <h1>Shadow Perspective Lab</h1>
     <p>Place forms or your own 3D models, move a sun or a point light, and read the shadow construction in one- and two-point perspective.</p>
   </div>
-  <button class="btn filled" id="bImport"><span class="msi" aria-hidden="true">upload_file</span>Import 3D model</button>
   <input type="file" id="fileIn" accept=".glb,.gltf,.bin,.obj,.stl,.png,.jpg,.jpeg" multiple hidden>
 </header>
 
@@ -2068,7 +2067,7 @@ function importFiles(fileList) {
   }
 }
 const fileIn = $('fileIn');
-$('bImport').onclick = () => fileIn.click();
+// (top-bar import button removed; the Forms panel button imports)
 $('bImport2').onclick = () => fileIn.click();
 fileIn.addEventListener('change', () => { if (fileIn.files.length) importFiles(fileIn.files); fileIn.value = ''; });
 let dragDepth = 0;
