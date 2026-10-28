@@ -134,7 +134,7 @@ input.sw:focus-visible{outline:3px solid var(--md-primary);outline-offset:2px}
 .gizmos{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .giz{margin:0;display:grid;justify-items:center;gap:4px;background:var(--md-surface);border-radius:var(--r-m);padding:10px 6px 8px}
 .giz.one{grid-template-columns:auto 1fr;justify-items:start;align-items:center;gap:12px;padding:6px 10px}
-.giz.one svg{width:92px;height:92px}
+.giz.one svg{width:118px;height:118px}
 .giz.one figcaption{text-align:left}
 .giz .gh{font-size:11px;color:var(--md-on-surface-variant);opacity:.85}
 .giz figcaption{text-align:center;line-height:1.5}
@@ -331,7 +331,7 @@ label.chip:has(input:focus-visible){outline:3px solid var(--md-primary);outline-
       <div class="selbox" id="selBox" hidden>
       <div class="sel" id="selName">No form selected</div>
       <figure class="giz one"><svg id="gXf" viewBox="-66 -66 132 132" role="group" tabindex="0" aria-label="Rotate and size the selected form: drag the ring to rotate, drag inside to resize; arrow keys rotate, plus and minus resize"></svg>
-        <figcaption>Rotate <output id="oRot"></output> · Size <output id="oScale"></output><br><span class="gh">ring = rotate · inside = size</span></figcaption></figure>
+        <figcaption>Rotate <output id="oRot"></output><br>Size <output id="oScale"></output></figcaption></figure>
       <div hidden><input id="sRot" type="range" min="0" max="359" step="1" value="0"><input id="sScale" type="range" min="0.2" max="5" step="0.01" value="1"></div>
       <div class="row">
         <button class="btn outlined" id="bUp" hidden><span class="msi" aria-hidden="true">screen_rotation_alt</span>Stand upright</button>
