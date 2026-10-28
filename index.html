@@ -95,6 +95,7 @@ body{margin:0;background:var(--md-surface);color:var(--md-on-surface);font:400 1
 .card.c-view{background:var(--p-view);border:0}.card.c-view h2 .msi{color:var(--p-view-ink)}
 .card.c-light{background:var(--p-light);border:0}.card.c-light h2 .msi{color:var(--p-light-ink)}
 .card.c-forms{background:var(--p-forms);border:0}.card.c-forms h2 .msi{color:var(--p-forms-ink)}
+.card.c-export{background:var(--p-lines);border:0}.card.c-export h2 .msi{color:var(--p-lines-ink)}
 .card.c-lines{background:var(--p-lines);border:0}.card.c-lines h2 .msi{color:var(--p-lines-ink)}
 .explain{background:transparent;border:0;display:flex;align-items:flex-start;gap:8px;padding:0 4px;color:var(--md-on-surface-variant)}
 .explain .msi{font-size:18px;width:18px;color:var(--md-primary);margin-top:1px}
@@ -336,6 +337,11 @@ label.chip:has(input:focus-visible){outline:3px solid var(--md-primary);outline-
       </div>
       </div>
       <div class="row"><button class="btn danger" id="bDel" disabled><span class="msi" aria-hidden="true">delete</span>Remove</button><button class="btn" id="bClear"><span class="msi" aria-hidden="true">clear_all</span>Clear all</button></div>
+    </section>
+
+    <section class="card c-export" aria-labelledby="h-export">
+      <h2 id="h-export"><span class="msi" aria-hidden="true">ios_share</span>Export</h2>
+      <div class="row"><button class="btn tonal" id="bShot"><span class="msi" aria-hidden="true">photo_camera</span>Save screenshot</button></div>
     </section>
 
     <section class="card c-lines" aria-labelledby="h-ov">
@@ -2069,6 +2075,20 @@ function importFiles(fileList) {
 const fileIn = $('fileIn');
 // (top-bar import button removed; the Forms panel button imports)
 $('bImport2').onclick = () => fileIn.click();
+// right-drag on the drawing walks / orbits: never show the browser's context menu there
+glc.addEventListener('contextmenu', e => e.preventDefault());
+// Export: the drawing plus its construction overlay, as a PNG
+$('bShot').onclick = () => {
+  applyCamera(); applyLight(); renderer.render(scene, camera); drawOverlay();   // fresh frame, read before the buffer clears
+  const c = document.createElement('canvas'); c.width = ov.width; c.height = ov.height;
+  const x = c.getContext('2d');
+  x.fillStyle = '#fbfbf8'; x.fillRect(0, 0, c.width, c.height);
+  x.drawImage(glc, 0, 0, c.width, c.height); x.drawImage(ov, 0, 0);
+  const d = new Date(), p = n => String(n).padStart(2, '0');
+  const a = document.createElement('a');
+  a.download = `shadow-lab-${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}.png`;
+  a.href = c.toDataURL('image/png'); document.body.appendChild(a); a.click(); a.remove();
+};
 fileIn.addEventListener('change', () => { if (fileIn.files.length) importFiles(fileIn.files); fileIn.value = ''; });
 let dragDepth = 0;
 stage.addEventListener('dragenter', e => { e.preventDefault(); dragDepth++; $('drop').hidden = false; });
