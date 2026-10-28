@@ -281,10 +281,10 @@ label.chip:has(input:focus-visible){outline:3px solid var(--md-primary);outline-
       </div>
       <div class="vsliders" hidden>
       <label class="vs" for="sAz"><output id="oAz"></output><span class="vtrack"><input id="sAz" type="range" min="-89" max="89" step="1" value="35"></span><span class="vl">Angle</span></label>
-      <label class="vs" for="sEye"><output id="oEye"></output><span class="vtrack"><input id="sEye" type="range" min="0.3" max="40" step="0.1" value="4"></span><span class="vl">Eye</span></label>
+      <label class="vs" for="sEye"><output id="oEye"></output><span class="vtrack"><input id="sEye" type="range" min="0.3" max="150" step="0.1" value="4"></span><span class="vl">Eye</span></label>
       <label class="vs" for="sDist"><output id="oDist"></output><span class="vtrack"><input id="sDist" type="range" min="2" max="200" step="0.1" value="17"></span><span class="vl">Distance</span></label>
       <label class="vs" for="sLens"><output id="oLens"></output><span class="vtrack"><input id="sLens" type="range" min="8" max="300" step="1" value="24"></span><span class="vl">Lens</span></label>
-      <label class="vs" for="sTilt" id="lbTilt" hidden><output id="oTilt"></output><span class="vtrack"><input id="sTilt" type="range" min="-80" max="80" step="1" value="25"></span><span class="vl">Tilt</span></label>
+      <label class="vs" for="sTilt" id="lbTilt" hidden><output id="oTilt"></output><span class="vtrack"><input id="sTilt" type="range" min="-85" max="85" step="1" value="25"></span><span class="vl">Tilt</span></label>
       <label class="vs" for="sShift"><output id="oShift"></output><span class="vtrack"><input id="sShift" type="range" min="0.05" max="0.95" step="0.01" value="0.38"></span><span class="vl">Horizon</span></label>
       </div>
       <div class="camrow"><label class="tg tg-inline" for="cDial"><span>Camera dial</span><input type="checkbox" class="sw" id="cDial" checked></label>
@@ -1055,9 +1055,9 @@ function tag(p, text, col, dx = 10, dy = -10) {
   octx.fillStyle = 'rgba(255,255,255,.88)'; octx.fillRect(x - 3, y - 12, w + 6, 16);
   octx.fillStyle = col; octx.fillText(text, x, y);
 }
-function edgeArrow(p, text, col) { // VP far outside the frame: show a marker on the edge
+function edgeArrow(p, text, col, my = 10) { // VP far outside the frame: show a marker on the edge
   const W = ov.clientWidth, H = ov.clientHeight;
-  const q = {x: Math.min(Math.max(p.x, 10), W - 10), y: Math.min(Math.max(p.y, 10), H - 10)};
+  const q = {x: Math.min(Math.max(p.x, 10), W - 10), y: Math.min(Math.max(p.y, my), H - my)};
   dot(q, 4, col); tag(q, text + (p.x > W ? ' →' : p.x < 0 ? ' ←' : p.y < 0 ? ' ↑' : ' ↓'), col, p.x > W ? -text.length * 7.6 - 26 : 10, p.y > H ? -12 : 16);
 }
 function inside(p, m = 0) { return p && p.x >= -m && p.x <= ov.clientWidth + m && p.y >= -m && p.y <= ov.clientHeight + m; }
@@ -1097,9 +1097,12 @@ function drawOverlay() {
     if (S.view === '3pt') {
       const v3 = vpOf(new V3(0, 1, 0));
       if (v3) {
-        const q = inside(v3) ? v3 : {x: Math.min(Math.max(v3.x, 10), ov.clientWidth - 10), y: Math.min(Math.max(v3.y, 10), ov.clientHeight - 10)};
-        if (inside(v3)) { dot(v3, 7, '#7a3db8', '#fff'); tag(v3, 'VP3  verticals  ↕ drag', '#7a3db8', 10, S.tilt > 0 ? 20 : -12); }
-        else edgeArrow(v3, 'VP3 off page', '#7a3db8');
+        // off-page marker kept well clear of the info chips along the bottom edge so it is easy to grab
+        const MY = 70, H = ov.clientHeight;
+        const vis = v3.y >= MY && v3.y <= H - MY && v3.x >= 10 && v3.x <= ov.clientWidth - 10;
+        const q = vis ? v3 : {x: Math.min(Math.max(v3.x, 10), ov.clientWidth - 10), y: Math.min(Math.max(v3.y, MY), H - MY)};
+        if (vis) { dot(v3, 7, '#7a3db8', '#fff'); tag(v3, 'VP3  verticals  ↕ drag', '#7a3db8', 10, S.tilt > 0 ? 20 : -12); }
+        else { dot(q, 7, '#7a3db8', '#fff'); tag(q, 'VP3 off page ' + (v3.y < 0 ? '↑' : '↓') + '  drag toward centre', '#7a3db8', 12, v3.y < MY ? 20 : -12); }
         HIT.vp3 = {q, p: v3};
       }
     }
@@ -1346,7 +1349,7 @@ function hitPlane(y) { const p = new V3(); return ray.ray.intersectPlane(new THR
 function stageXY(e) { const r = glc.getBoundingClientRect(); return {x: e.clientX - r.left, y: e.clientY - r.top}; }
 function guideHit(m) {
   if (S.view === '2pt') for (const v of HIT.vps) if (Math.hypot(m.x - v.q.x, m.y - v.q.y) < 16) return {kind: 'vp', v};
-  if (S.view === '3pt' && HIT.vp3 && Math.hypot(m.x - HIT.vp3.q.x, m.y - HIT.vp3.q.y) < 16) return {kind: 'vp3'};
+  if (S.view === '3pt' && HIT.vp3 && Math.hypot(m.x - HIT.vp3.q.x, m.y - HIT.vp3.q.y) < 24) return {kind: 'vp3'};
   if ((S.view === '1pt' || S.view === '2pt') && HIT.hlY != null && Math.abs(m.y - HIT.hlY) < 6) return {kind: 'hl'};
   return null;
 }
@@ -1406,9 +1409,17 @@ glc.addEventListener('pointermove', e => {
   if (drag.kind === 'vp') { dragVP(drag.v, stageXY(e).x); dirty = true; return; }
   if (drag.kind === 'hl') { S.shift = Math.max(-0.45, Math.min(0.45, stageXY(e).y / ov.clientHeight - 0.5)); syncSliders(); dirty = true; return; }
   if (drag.kind === 'vp3') {
-    const fy = camera.projectionMatrix.elements[5] * ov.clientHeight / 2, dy = ov.clientHeight / 2 - stageXY(e).y;
-    const t = Math.sign(dy || 1) * THREE.MathUtils.radToDeg(Math.atan(fy / Math.max(1, Math.abs(dy))));
-    S.tilt = Math.max(-80, Math.min(80, Math.abs(t) < 3 ? 3 * Math.sign(t || 1) : t)); syncSliders(); dirty = true; return;
+    // relative, logarithmic drag: VP3's distance from the centre shrinks or grows by a constant factor per pixel,
+    // so it is as easy to steer when it is far off the page (gentle tilt) as when it is close (extreme view)
+    const fy = camera.projectionMatrix.elements[5] * ov.clientHeight / 2, y = stageXY(e).y;
+    if (drag.y == null) { drag.y = y; drag.sgn = Math.sign(S.tilt || -1); }
+    const toward = (y - drag.y) * drag.sgn;          // + = pointer moves toward the centre (VP3 sits on the far side)
+    drag.y = y;
+    const D = fy / Math.tan(THREE.MathUtils.degToRad(Math.max(1, Math.abs(S.tilt))));
+    const nD = D * Math.exp(-toward / 140);
+    const t = THREE.MathUtils.radToDeg(Math.atan(fy / nD));
+    S.tilt = drag.sgn * Math.max(1, Math.min(85, t));
+    aimAtForms(); syncSliders(); dirty = true; return;
   }
   if (drag.kind === 'light') { const p = hitPlane(S.pPos.y); if (p) { S.pPos.set(p.x, S.pPos.y, p.z); } }
   else if (drag.kind === 'form') { const p = hitPlane(0); if (p) drag.g.position.set(p.x + drag.off.x, 0, p.z + drag.off.z); }
@@ -1429,14 +1440,14 @@ controls.addEventListener('change', () => dirty = true);
 // Two copies of the same dial: one floating on the drawing (see-through, movable by its centre, top-right by
 // default) and one in the Perspective panel. Drag a slice in any direction (right/up = more) or scroll over it.
 const PIE_PARAMS = [
-  {key: 'eye', label: 'Eye', min: 0.3, max: 40, log: true, fmt: v => v.toFixed(1) + ' m', views: ['1pt', '2pt', '3pt']},
+  {key: 'eye', label: 'Eye', min: 0.3, max: 150, log: true, fmt: v => v.toFixed(1) + ' m', views: ['1pt', '2pt', '3pt']},
   {key: 'feye', label: 'Eye', min: 0.3, max: 60, log: true, fmt: v => v.toFixed(1) + ' m', views: ['free']},
   {key: 'az', label: 'Angle', min: -89, max: 89, step: 0.4, fmt: v => Math.round(v) + '°', views: ['1pt', '2pt', '3pt']},
   {key: 'faz', label: 'Angle', min: -180, max: 180, step: 0.5, wrap: true, fmt: v => Math.round(v) + '°', views: ['free']},
   {key: 'dist', label: 'Distance', min: 2, max: 200, log: true, fmt: v => v.toFixed(1) + ' m', views: ['1pt', '2pt', '3pt']},
   {key: 'fdist', label: 'Distance', min: 1, max: 200, log: true, fmt: v => v.toFixed(1) + ' m', views: ['free']},
   {key: 'lens', label: 'Lens', min: 8, max: 300, log: true, fmt: v => Math.round(v) + ' mm', views: ['1pt', '2pt', '3pt', 'free']},
-  {key: 'tilt', label: 'Tilt', min: -80, max: 80, step: 0.4, fmt: v => Math.round(v) + '°', views: ['3pt']},
+  {key: 'tilt', label: 'Tilt', min: -85, max: 85, step: 0.4, fmt: v => Math.round(v) + '°', views: ['3pt']},
   {key: 'hz', label: 'Horizon', min: 0.05, max: 0.95, step: 0.003, fmt: v => Math.round(v * 100) + '%', views: ['1pt', '2pt']},
 ];
 // free orbit: angle / eye / distance are read from and written to the orbiting camera itself
@@ -1634,6 +1645,16 @@ function setViewButtons(v, keepAz) {
     $('hint').textContent = 'Drag a form or the bulb to move it · drag empty space to walk around · scroll to zoom';
   }
   syncSliders(); dirty = true; if (typeof drawDials === 'function') drawDials();
+}
+// keep the forms in the middle of the frame while the tilt changes: bird's-eye views climb, worm's-eye views come closer
+function aimAtForms() {
+  const box = new THREE.Box3(); forms.forEach(g => box.expandByObject(g));
+  const cy = box.isEmpty() ? 1.5 : box.getCenter(new V3()).y;
+  const R = Math.min(200, Math.hypot(S.dist, S.eye - cy)), a = THREE.MathUtils.degToRad(Math.abs(S.tilt));
+  // swing the viewer on a circle around the forms: same viewing distance, so the forms keep their size
+  S.dist = Math.max(2, R * Math.cos(a));
+  S.eye = S.tilt < 0 ? Math.min(150, cy + R * Math.sin(a)) : Math.max(0.3, cy - R * Math.sin(a));
+  if (S.tilt > 0 && S.eye <= 0.3) S.dist = Math.max(2, (cy - 0.3) / Math.tan(a));
 }
 function fitView() {
   if (!forms.length) return;
