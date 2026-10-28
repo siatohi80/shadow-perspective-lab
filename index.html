@@ -95,6 +95,7 @@ body{margin:0;background:var(--md-surface);color:var(--md-on-surface);font:400 1
 .field{display:grid;gap:4px;font-size:12px;color:var(--md-on-surface-variant);min-width:0}
 .field select{font:400 14px var(--font);height:40px;border-radius:4px;border:1px solid var(--md-outline);background:transparent;color:var(--md-on-surface);padding:0 10px}
 .field select option{background:var(--md-surface);color:var(--md-on-surface)}
+.sub{font:500 12px var(--font);letter-spacing:.06em;text-transform:uppercase;color:var(--p-forms-ink)}
 .fields{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr);gap:10px}
 /* segmented buttons */
 .seg{display:flex;border:1px solid var(--md-outline);border-radius:20px;overflow:hidden;height:40px}
@@ -177,9 +178,10 @@ label.chip:has(input:focus-visible){outline:3px solid var(--md-primary);outline-
       </div>
       <label class="sl" for="sAz">Viewing angle<input id="sAz" type="range" min="-75" max="75" step="1" value="35"><output id="oAz"></output></label>
       <label class="sl" for="sEye">Eye height<input id="sEye" type="range" min="0.3" max="20" step="0.1" value="4"><output id="oEye"></output></label>
-      <label class="sl" for="sDist">Distance<input id="sDist" type="range" min="7" max="45" step="0.5" value="17"><output id="oDist"></output></label>
+      <label class="sl" for="sDist">Distance<input id="sDist" type="range" min="2" max="45" step="0.1" value="17"><output id="oDist"></output></label>
       <label class="sl" for="sLens">Focal length<input id="sLens" type="range" min="14" max="85" step="1" value="24"><output id="oLens"></output></label>
       <label class="sl" for="sShift">Horizon in frame<input id="sShift" type="range" min="-0.45" max="0.45" step="0.01" value="0.12"><output id="oShift"></output></label>
+      <div class="row"><button class="btn tonal" id="bFit"><span class="msi" aria-hidden="true">fit_screen</span>Fit view to forms</button></div>
       <p class="note">The camera stays level, so verticals stay vertical. Angle 0° gives one-point perspective; any other angle gives two-point. Free orbit lets the camera tilt (three-point).</p>
     </section>
 
@@ -203,8 +205,10 @@ label.chip:has(input:focus-visible){outline:3px solid var(--md-primary);outline-
     <section class="card c-forms" aria-labelledby="h-forms">
       <h2 id="h-forms"><span class="msi" aria-hidden="true">apartment</span>Forms</h2>
       <div class="chips" id="lib"></div>
+      <div class="sub">Furniture</div>
+      <div class="chips" id="libFurn"></div>
       <div class="fields">
-        <label class="field" for="selWin">Window style (double-hung)<select id="selWin"></select></label>
+        <label class="field" for="selWin">Window style<select id="selWin"></select></label>
         <label class="field" for="selWinN">Windows per wall<select id="selWinN"><option>1</option><option>2</option><option selected>3</option><option>4</option></select></label>
       </div>
       <div class="row">
@@ -315,114 +319,303 @@ function extrudePlan(pts, h) { // pts in plan (x, z)
 function rectKeys(sx, sz, h, x = 0, z = 0) {
   return [[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([a, b]) => new V3(x + a * sx / 2, h, z + b * sz / 2));
 }
-// ---------------------------------------------------------------- double-hung window walls
-const WIN_STYLES = {
-  '2/1':     {label: '2 over 1', top: [2, 1], bot: [1, 1]},
-  '3/1':     {label: '3 over 1', top: [3, 1], bot: [1, 1]},
-  '4/1':     {label: '4 over 1', top: [2, 2], bot: [1, 1]},
-  '6/1':     {label: '6 over 1', top: [3, 2], bot: [1, 1]},
-  '2/2':     {label: '2 over 2', top: [2, 1], bot: [2, 1]},
-  '3/3':     {label: '3 over 3', top: [3, 1], bot: [3, 1]},
-  'prairie': {label: 'Prairie', prairie: true},
-  '4/4':     {label: '4 over 4', top: [2, 2], bot: [2, 2]},
-  'segment': {label: 'Segmental top', head: 'segment', top: [3, 2], bot: [3, 2]},
-  'round':   {label: 'Round top', head: 'round', top: [3, 1], bot: [3, 2], sunburst: true},
-};
-const WIN = {w: 1.0, y0: 0.85, h: 1.7, casing: 0.14, frame: 0.065, rise: 0.2};
-// outline of an opening offset by d (sides/top) and db (bottom), as points from bottom-left, up, over the head, down to bottom-right
-function winOutline(head, d, db, cx) {
-  const L = cx - WIN.w / 2 - d, R = cx + WIN.w / 2 + d, B = WIN.y0 - db, T = WIN.y0 + WIN.h + (head === 'flat' ? d : 0);
-  const pts = [[L, B], [L, T]];
-  if (head === 'round') {
-    const r = WIN.w / 2 + d;
-    for (let i = 1; i < 32; i++) { const a = Math.PI - i / 32 * Math.PI; pts.push([cx + r * Math.cos(a), T + r * Math.sin(a)]); }
-  } else if (head === 'segment') {
-    const half = WIN.w / 2 + d, s = WIN.rise + d * 0.3, Rr = (s * s + half * half) / (2 * s), cy = T + s - Rr;
+// ---------------------------------------------------------------- window walls (double-hung + arched)
+// geometry helpers: an opening is a polygon (bottom-left, up, over the head, down to bottom-right)
+function headPts(G, cx) {           // head curve points between the two spring points (exclusive)
+  const L = cx - G.w / 2, R = cx + G.w / 2, T = G.y0 + G.h, pts = [], N = 40;
+  if (G.head === 'round') {
+    const r = G.w / 2;
+    for (let i = 1; i < N; i++) { const a = Math.PI - i / N * Math.PI; pts.push([cx + r * Math.cos(a), T + r * Math.sin(a)]); }
+  } else if (G.head === 'segment') {
+    const half = G.w / 2, s = G.rise, Rr = (s * s + half * half) / (2 * s), cy = T + s - Rr;
     const a0 = Math.atan2(T - cy, -half), a1 = Math.atan2(T - cy, half);
-    for (let i = 1; i < 24; i++) { const a = a0 + (a1 - a0) * i / 24; pts.push([cx + Rr * Math.cos(a), cy + Rr * Math.sin(a)]); }
+    for (let i = 1; i < N; i++) { const a = a0 + (a1 - a0) * i / N; pts.push([cx + Rr * Math.cos(a), cy + Rr * Math.sin(a)]); }
+  } else if (G.head === 'gothic') {  // two arcs centred on the spring line
+    const Rg = G.k * G.w, cl = L + Rg, cr = R - Rg, aTop = Math.acos((cx - cl) / Rg);
+    for (let i = 1; i <= N / 2; i++) { const a = Math.PI - (Math.PI - aTop) * i / (N / 2); pts.push([cl + Rg * Math.cos(a), T + Rg * Math.sin(a)]); }
+    for (let i = N / 2 - 1; i >= 1; i--) { const a = Math.PI - (Math.PI - aTop) * i / (N / 2); pts.push([cr - Rg * Math.cos(a), T + Rg * Math.sin(a)]); }
+  } else if (G.head === 'bell') {    // shouldered cap: cosine swell to a raised centre
+    for (let i = 1; i < N; i++) { const t = i / N, x = L + t * G.w, u = Math.abs(t - 0.5) * 2; pts.push([x, T + G.rise * (0.5 + 0.5 * Math.cos(Math.PI * u))]); }
+  } else if (G.head === 'tomb') {    // quarter-round shoulders + raised central semicircle
+    const q = G.q * G.w, rc = G.w / 2 - q;
+    for (let i = 1; i <= 10; i++) { const a = Math.PI - i / 10 * Math.PI / 2; pts.push([L + q + q * Math.cos(a), T + q * Math.sin(a)]); }
+    for (let i = 1; i < 30; i++) { const a = Math.PI - i / 30 * Math.PI; pts.push([cx + rc * Math.cos(a), T + q + rc * Math.sin(a)]); }
+    for (let i = 0; i < 10; i++) { const a = Math.PI / 2 - i / 10 * Math.PI / 2; pts.push([R - q + q * Math.cos(a), T + q * Math.sin(a)]); }
   }
-  pts.push([R, T], [R, B]);
   return pts;
 }
-// height of the head curve at x (for muntins running up into an arched head)
-function headY(head, x, cx) {
-  const T = WIN.y0 + WIN.h, dx = x - cx;
-  if (head === 'round') { const r = WIN.w / 2 - WIN.frame; return T + Math.sqrt(Math.max(0, r * r - dx * dx)); }
-  if (head === 'segment') {
-    const half = WIN.w / 2, s = WIN.rise, Rr = (s * s + half * half) / (2 * s), cy = T + s - Rr;
-    return cy + Math.sqrt(Math.max(0, (Rr - WIN.frame) ** 2 - dx * dx));
+function winOutline(G, d, db, cx) {
+  const L = cx - G.w / 2, R = cx + G.w / 2, B = G.y0, T = G.y0 + G.h;
+  const base = [[L, B], [L, T], ...headPts(G, cx), [R, T], [R, B]];
+  if (!d && !db) return base;
+  // offset the closed polygon by d (miter), then set the bottom edge from db
+  let area = 0; for (let i = 0; i < base.length; i++) { const a = base[i], b = base[(i + 1) % base.length]; area += a[0] * b[1] - b[0] * a[1]; }
+  const sgn = area > 0 ? 1 : -1, n = base.length, out = [];
+  const nrm = (a, b) => { const dx = b[0] - a[0], dy = b[1] - a[1], l = Math.hypot(dx, dy) || 1; return [sgn * dy / l, -sgn * dx / l]; };
+  for (let i = 0; i < n; i++) {
+    const p = base[i], n1 = nrm(base[(i - 1 + n) % n], p), n2 = nrm(p, base[(i + 1) % n]);
+    let mx = n1[0] + n2[0], my = n1[1] + n2[1]; const ml = Math.hypot(mx, my) || 1; mx /= ml; my /= ml;
+    const len = d / Math.max(0.35, mx * n1[0] + my * n1[1]);
+    out.push([p[0] + mx * len, p[1] + my * len]);
   }
-  return T - WIN.frame;
+  out[0][1] = B - db; out[n - 1][1] = B - db;
+  return out;
 }
 const V2 = a => new THREE.Vector2(a[0], a[1]);
 function slab(shape, z0, depth, mat) {
   const g = new THREE.ExtrudeGeometry(shape, {depth, bevelEnabled: false, curveSegments: 1}); g.translate(0, 0, z0);
   return new THREE.Mesh(g, mat);
 }
-function muntin(x0, y0, x1, y1, z) { // thin bar from (x0,y0) to (x1,y1)
-  const len = Math.hypot(x1 - x0, y1 - y0);
-  const m = new THREE.Mesh(new THREE.BoxGeometry(len, 0.028, 0.03), WHITE);
-  m.position.set((x0 + x1) / 2, (y0 + y1) / 2, z); m.rotation.z = Math.atan2(y1 - y0, x1 - x0);
-  return m;
+function inPoly(P, x, y) {
+  let c = false;
+  for (let i = 0, j = P.length - 1; i < P.length; j = i++) {
+    const [xi, yi] = P[i], [xj, yj] = P[j];
+    if ((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) c = !c;
+  }
+  return c;
 }
+function clipSeg(P, ax, ay, bx, by) {  // pieces of segment AB inside polygon P
+  const ts = [0, 1];
+  for (let i = 0, j = P.length - 1; i < P.length; j = i++) {
+    const [x1, y1] = P[j], [x2, y2] = P[i];
+    const den = (bx - ax) * (y2 - y1) - (by - ay) * (x2 - x1); if (Math.abs(den) < 1e-12) continue;
+    const t = ((x1 - ax) * (y2 - y1) - (y1 - ay) * (x2 - x1)) / den, u = ((x1 - ax) * (by - ay) - (y1 - ay) * (bx - ax)) / den;
+    if (t > 0 && t < 1 && u >= 0 && u <= 1) ts.push(t);
+  }
+  ts.sort((a, b) => a - b);
+  const out = [];
+  for (let i = 0; i < ts.length - 1; i++) {
+    const t0 = ts[i], t1 = ts[i + 1]; if (t1 - t0 < 1e-4) continue;
+    const tm = (t0 + t1) / 2;
+    if (inPoly(P, ax + (bx - ax) * tm, ay + (by - ay) * tm)) out.push([ax + (bx - ax) * t0, ay + (by - ay) * t0, ax + (bx - ax) * t1, ay + (by - ay) * t1]);
+  }
+  return out;
+}
+// tracery painter: every bar is clipped to the glazed area, so curves and lines can be drawn generously
+function painter(ms, inner, z, thick = 0.028) {
+  const piece = (x0, y0, x1, y1) => {
+    const len = Math.hypot(x1 - x0, y1 - y0); if (len < 0.01) return;
+    const m = new THREE.Mesh(new THREE.BoxGeometry(len + thick * 0.6, thick, 0.03), WHITE);
+    m.position.set((x0 + x1) / 2, (y0 + y1) / 2, z); m.rotation.z = Math.atan2(y1 - y0, x1 - x0); ms.push(m);
+  };
+  const P = {
+    line(x0, y0, x1, y1) { for (const s of clipSeg(inner, x0, y0, x1, y1)) piece(...s); },
+    poly(pts, closed) { for (let i = 0; i < pts.length - (closed ? 0 : 1); i++) { const a = pts[i], b = pts[(i + 1) % pts.length]; P.line(a[0], a[1], b[0], b[1]); } },
+    arc(cx, cy, r, a0, a1, n = 24) { const pts = []; for (let i = 0; i <= n; i++) { const a = a0 + (a1 - a0) * i / n; pts.push([cx + r * Math.cos(a), cy + r * Math.sin(a)]); } P.poly(pts, false); },
+    circle(cx, cy, r) { P.arc(cx, cy, r, 0, Math.PI * 2, 32); },
+    ray(cx, cy, r0, deg) { const a = deg * Math.PI / 180; P.line(cx + r0 * Math.cos(a), cy + r0 * Math.sin(a), cx + 5 * Math.cos(a), cy + 5 * Math.sin(a)); },
+    // intersecting tracery: a pointed arch over every pair of bays (positions = jambs + mullions)
+    intersect(xs, T) {
+      for (let i = 0; i + 2 < xs.length; i++) {
+        const a = xs[i], b = xs[i + 2], r = b - a;
+        P.arc(b, T, r, Math.PI, Math.PI / 2, 24); P.arc(a, T, r, 0, Math.PI / 2, 24);
+      }
+    },
+  };
+  return P;
+}
+
+// --- styles -----------------------------------------------------------------
+// tracery(P, f): f gives the glazed frame: xl, xr, yb (bottom), T (spring line), cx, wi (inner width)
+const DH = {w: 1.0, y0: 0.85, h: 1.7, rise: 0.2};
+const cols = (f, n) => [...Array(n + 1)].map((_, i) => f.xl + (f.xr - f.xl) * i / n);
+const rowsY = (y0, y1, n) => [...Array(n - 1)].map((_, i) => y0 + (y1 - y0) * (i + 1) / n);
+function tgrid(P, f, nc, nr, y0, y1, extendUp) {
+  for (const x of cols(f, nc).slice(1, -1)) P.line(x, y0, x, extendUp ? 9 : y1);
+  for (const y of rowsY(y0, y1, nr)) P.line(f.xl - 1, y, f.xr + 1, y);
+}
+const WIN_STYLES = {
+  // double-hung (upper/lower sash, meeting rail)
+  '2/1':     {group: 'Double-hung', label: '2 over 1', dh: true, top: [2, 1], bot: [1, 1]},
+  '3/1':     {group: 'Double-hung', label: '3 over 1', dh: true, top: [3, 1], bot: [1, 1]},
+  '4/1':     {group: 'Double-hung', label: '4 over 1', dh: true, top: [2, 2], bot: [1, 1]},
+  '6/1':     {group: 'Double-hung', label: '6 over 1', dh: true, top: [3, 2], bot: [1, 1]},
+  '2/2':     {group: 'Double-hung', label: '2 over 2', dh: true, top: [2, 1], bot: [2, 1]},
+  '3/3':     {group: 'Double-hung', label: '3 over 3', dh: true, top: [3, 1], bot: [3, 1]},
+  'prairie': {group: 'Double-hung', label: 'Prairie', dh: true, prairie: true},
+  '4/4':     {group: 'Double-hung', label: '4 over 4', dh: true, top: [2, 2], bot: [2, 2]},
+  'segment': {group: 'Double-hung', label: 'Segmental top', dh: true, head: 'segment', top: [3, 2], bot: [3, 2]},
+  'round':   {group: 'Double-hung', label: 'Round top, sunburst', dh: true, head: 'round', top: [3, 1], bot: [3, 2], sunburst: true},
+  // arched, fixed (numbers follow the reference sheet)
+  'a1': {group: 'Arched', label: '1 · Bell top', G: {w: 1.1, y0: 0.7, h: 2.0, head: 'bell', rise: 0.3},
+    draw(P, f) { P.line(f.cx, f.yb, f.cx, 9); tgrid(P, f, 1, 5, f.yb, f.T); P.line(f.xl - 1, f.T, f.xr + 1, f.T); }},
+  'a2': {group: 'Arched', label: '2 · Round, Y-tracery', G: {w: 1.2, y0: 0.7, h: 1.4, head: 'round'},
+    draw(P, f) { tgrid(P, f, 3, 4, f.yb, f.T); P.line(f.xl - 1, f.T, f.xr + 1, f.T); P.intersect(cols(f, 3), f.T); P.arc(f.cx, f.T, f.wi / 2 - 0.09, Math.PI * 0.4, Math.PI * 0.6); }},
+  'a3': {group: 'Arched', label: '3 · Round, centre light', G: {w: 1.2, y0: 0.7, h: 1.4, head: 'round'},
+    draw(P, f) {
+      const c = 0.16, top = f.T + 0.22;
+      P.line(f.cx - c, f.yb, f.cx - c, top); P.line(f.cx + c, f.yb, f.cx + c, top); P.arc(f.cx, top, c, 0, Math.PI);
+      for (const y of rowsY(f.yb, f.T, 3)) { P.line(f.xl - 1, y, f.cx - c, y); P.line(f.cx + c, y, f.xr + 1, y); }
+      P.line(f.xl - 1, f.T, f.cx - c, f.T); P.line(f.cx + c, f.T, f.xr + 1, f.T);
+      P.arc(f.cx, f.T, f.wi / 2 - 0.13, 0, Math.PI); P.ray(f.cx, f.T, 0.3, 40); P.ray(f.cx, f.T, 0.3, 140); P.ray(f.cx, f.T, 0.38, 90);
+    }},
+  'a4': {group: 'Arched', label: '4 · Gothic lancet', G: {w: 0.9, y0: 0.7, h: 1.45, head: 'gothic', k: 1.0},
+    draw(P, f) {
+      tgrid(P, f, 3, 4, f.yb, f.T); P.line(f.xl - 1, f.T, f.xr + 1, f.T); P.intersect(cols(f, 3), f.T);
+      const ay = f.T + 0.62, s = 0.07; P.poly([[f.cx, ay - s], [f.cx + s, ay], [f.cx, ay + s], [f.cx - s, ay]], true);
+    }},
+  'a5': {group: 'Arched', label: '5 · Round, quatrefoil', G: {w: 1.2, y0: 0.7, h: 1.5, head: 'round'},
+    draw(P, f) {
+      tgrid(P, f, 2, 3, f.yb, f.T); P.line(f.xl - 1, f.T, f.xr + 1, f.T);
+      P.arc(f.xl + f.wi / 4, f.T, f.wi / 4, 0, Math.PI); P.arc(f.xr - f.wi / 4, f.T, f.wi / 4, 0, Math.PI);
+      const qy = f.T + 0.36, o = 0.075, r = 0.075;
+      for (const k of [0, 90, 180, 270]) { const a = k * Math.PI / 180; P.arc(f.cx + o * Math.cos(a), qy + o * Math.sin(a), r, a - 2.3, a + 2.3, 16); }
+    }},
+  'a6': {group: 'Arched', label: '6 · Fan (half-round)', G: {w: 2.0, y0: 1.5, h: 0.3, head: 'round'},
+    draw(P, f) {
+      P.line(f.xl - 1, f.T, f.xr + 1, f.T); for (const x of cols(f, 6).slice(1, -1)) P.line(x, f.yb, x, f.T);
+      P.arc(f.cx, f.T, 0.36, 0, Math.PI); P.arc(f.cx, f.T, 0.68, 0, Math.PI);
+      for (const a of [30, 60, 90, 120, 150]) P.ray(f.cx, f.T, 0.36, a);
+    }},
+  'a7': {group: 'Arched', label: '7 · Gothic, intersecting', G: {w: 1.3, y0: 0.7, h: 1.0, head: 'gothic', k: 0.85},
+    draw(P, f) { tgrid(P, f, 4, 2, f.yb, f.T); P.line(f.xl - 1, f.T, f.xr + 1, f.T); P.intersect(cols(f, 4), f.T); }},
+  'a8': {group: 'Arched', label: '8 · Tombstone', G: {w: 1.3, y0: 0.7, h: 1.3, head: 'tomb', q: 0.22},
+    draw(P, f) { tgrid(P, f, 4, 3, f.yb, f.T, true); P.line(f.xl - 1, f.T, f.xr + 1, f.T); P.line(f.xl - 1, f.T + 0.27, f.xr + 1, f.T + 0.27); }},
+  'a9': {group: 'Arched', label: '9 · Round, octagons', G: {w: 1.2, y0: 0.7, h: 1.4, head: 'round'},
+    draw(P, f) {
+      const c = f.wi / 3, k = c * 0.29;
+      for (let yb = f.yb; yb < f.T - 0.05; yb += c) for (let i = 0; i < 3; i++) {
+        const x0 = f.xl + i * c, x1 = x0 + c, y1 = yb + c;
+        P.poly([[x0 + k, yb], [x1 - k, yb], [x1, yb + k], [x1, y1 - k], [x1 - k, y1], [x0 + k, y1], [x0, y1 - k], [x0, yb + k]], true);
+      }
+      P.intersect(cols(f, 3), f.T + 0.02);
+    }},
+  'a10': {group: 'Arched', label: '10 · Round, sunburst grid', G: {w: 1.2, y0: 0.7, h: 1.4, head: 'round'},
+    draw(P, f) {
+      tgrid(P, f, 4, 3, f.yb, f.T); P.line(f.xl - 1, f.T, f.xr + 1, f.T);
+      P.arc(f.cx, f.T, 0.17, 0, Math.PI); for (const a of [30, 60, 90, 120, 150]) P.ray(f.cx, f.T, 0.17, a);
+    }},
+  'a11': {group: 'Arched', label: '11 · Round, interlaced', G: {w: 1.2, y0: 0.7, h: 1.4, head: 'round'},
+    draw(P, f) {
+      const r = f.wi / 2, ym = f.yb + (f.T - f.yb) / 2;
+      P.line(f.cx, f.yb, f.cx, 9); P.line(f.xl - 1, ym, f.xr + 1, ym); P.line(f.xl - 1, f.T, f.xr + 1, f.T);
+      P.circle(f.xl, ym, r); P.circle(f.xr, ym, r); P.circle(f.xl, f.T, r); P.circle(f.xr, f.T, r);
+    }},
+  'a12': {group: 'Arched', label: '12 · Round, inner arch', G: {w: 1.2, y0: 0.7, h: 1.4, head: 'round'},
+    draw(P, f) {
+      const c = 0.27, base = f.yb + 0.24;
+      P.line(f.xl - 1, base, f.xr + 1, base); for (const x of cols(f, 4).slice(1, -1)) P.line(x, f.yb, x, base);
+      P.line(f.cx - c, base, f.cx - c, f.T); P.line(f.cx + c, base, f.cx + c, f.T); P.arc(f.cx, f.T, c, 0, Math.PI);
+      for (const y of rowsY(base, f.T, 3)) { P.line(f.xl - 1, y, f.cx - c, y); P.line(f.cx + c, y, f.xr + 1, y); }
+      P.line(f.xl - 1, f.T, f.cx - c, f.T); P.line(f.cx + c, f.T, f.xr + 1, f.T);
+      for (const a of [30, 60, 90, 120, 150]) P.ray(f.cx, f.T, c, a);
+    }},
+  'a13': {group: 'Arched', label: '13 · Round, Y-tracery 3×2', G: {w: 1.2, y0: 0.7, h: 1.3, head: 'round'},
+    draw(P, f) { tgrid(P, f, 3, 2, f.yb, f.T); P.line(f.xl - 1, f.T, f.xr + 1, f.T); P.intersect(cols(f, 3), f.T); P.arc(f.cx, f.T, f.wi / 2 - 0.08, Math.PI * 0.42, Math.PI * 0.58); }},
+};
+const CASING = 0.14;
 function makeWindowWall(styleKey, n) {
   const st = WIN_STYLES[styleKey] || WIN_STYLES['6/1'];
-  const head = st.head || 'flat';
-  const t = 0.4, H = 3.6, gap = 1.1, L = n * WIN.w + (n - 1) * gap + 2 * 1.0;
+  const G = st.dh ? Object.assign({head: st.head || 'flat'}, DH) : st.G;
+  const frame = st.dh ? 0.065 : 0.055;
+  const t = 0.4, H = 3.6, gap = 1.0, L = n * G.w + (n - 1) * gap + 2 * 1.0;
   const front = t / 2;
   const wall = new THREE.Shape([[-L / 2, 0], [L / 2, 0], [L / 2, H], [-L / 2, H]].map(V2));
   const ms = [];
-  const centers = [...Array(n)].map((_, i) => -((n - 1) * (WIN.w + gap)) / 2 + i * (WIN.w + gap));
+  const centers = [...Array(n)].map((_, i) => -((n - 1) * (G.w + gap)) / 2 + i * (G.w + gap));
   for (const cx of centers) {
-    const open = winOutline(head, 0, 0, cx);
+    const open = winOutline(G, 0, 0, cx);
     wall.holes.push(new THREE.Path(open.map(V2)));
-    // glass + sash frame, recessed 0.2 m behind the wall face
     const glass = new THREE.Mesh(new THREE.ShapeGeometry(new THREE.Shape(open.map(V2))), GLASS); glass.position.z = -0.02; ms.push(glass);
-    const sash = new THREE.Shape(open.map(V2)); sash.holes.push(new THREE.Path(winOutline(head, -WIN.frame, -WIN.frame, cx).map(V2)));
+    const inner = winOutline(G, -frame, -frame, cx);
+    const sash = new THREE.Shape(open.map(V2)); sash.holes.push(new THREE.Path(inner.map(V2)));
     ms.push(slab(sash, -0.02, 0.06, WHITE));
-    const mid = WIN.y0 + WIN.h / 2;
-    ms.push(boxMesh(WIN.w, 0.07, 0.07, cx, mid - 0.035, 0.0));                 // meeting rail
-    ms.push(boxMesh(0.12, 0.02, 0.025, cx - 0.2, mid + 0.035, 0.0), boxMesh(0.12, 0.02, 0.025, cx + 0.2, mid + 0.035, 0.0)); // sash locks
-    // muntins
-    const xl = cx - WIN.w / 2 + WIN.frame, xr = cx + WIN.w / 2 - WIN.frame, z = 0.01;
-    const lowB = WIN.y0 + WIN.frame, lowT = mid - 0.035, upB = mid + 0.035;
-    const grid = ([c, r], yb, yt, arched) => {
-      for (let i = 1; i < c; i++) { const x = xl + (xr - xl) * i / c; ms.push(muntin(x, yb, x, arched ? headY(head, x, cx) : yt, z)); }
-      for (let j = 1; j < r; j++) { const y = yb + (yt - yb) * j / r; ms.push(muntin(xl, y, xr, y, z)); }
-    };
-    if (st.prairie) {
-      const o = 0.12;
-      for (const [yb, yt] of [[lowB, lowT], [upB, WIN.y0 + WIN.h - WIN.frame]]) {
-        ms.push(muntin(xl + o, yb, xl + o, yt, z), muntin(xr - o, yb, xr - o, yt, z));
-        ms.push(muntin(xl, yt - o, xr, yt - o, z));
-        if (yb === lowB) ms.push(muntin(xl, yb + o, xr, yb + o, z));
+    const f = {xl: cx - G.w / 2 + frame, xr: cx + G.w / 2 - frame, yb: G.y0 + frame, T: G.y0 + G.h, cx, wi: G.w - 2 * frame};
+    const P = painter(ms, inner, 0.01);
+    if (st.dh) {
+      const mid = G.y0 + G.h / 2;
+      ms.push(boxMesh(G.w, 0.07, 0.07, cx, mid - 0.035, 0.0));
+      ms.push(boxMesh(0.12, 0.02, 0.025, cx - 0.2, mid + 0.035, 0.0), boxMesh(0.12, 0.02, 0.025, cx + 0.2, mid + 0.035, 0.0));
+      const lowT = mid - 0.035, upB = mid + 0.035;
+      const sub = ([c, r], y0, y1, up) => { for (const x of cols(f, c).slice(1, -1)) P.line(x, y0, x, up ? 9 : y1); for (const y of rowsY(y0, y1, r)) P.line(f.xl - 1, y, f.xr + 1, y); };
+      if (st.prairie) {
+        const o = 0.12, topY = G.y0 + G.h - frame;
+        for (const [yb, yt] of [[f.yb, lowT], [upB, topY]]) { P.line(f.xl + o, yb, f.xl + o, yt); P.line(f.xr - o, yb, f.xr - o, yt); P.line(f.xl, yt - o, f.xr, yt - o); }
+        P.line(f.xl, f.yb + o, f.xr, f.yb + o);
+      } else {
+        const arched = G.head !== 'flat';
+        sub(st.bot || [1, 1], f.yb, lowT, false);
+        sub(st.top || [1, 1], upB, arched ? f.T : G.y0 + G.h - frame, arched && !st.sunburst);
+        if (arched) P.line(f.xl - 1, f.T, f.xr + 1, f.T);
+        if (st.sunburst) {
+          for (const a of [30, 60, 90, 120, 150]) P.ray(cx, f.T, 0.17, a);
+          P.arc(cx, f.T, 0.17, 0, Math.PI);
+        }
       }
     } else {
-      const upT = head === 'flat' ? WIN.y0 + WIN.h - WIN.frame : WIN.y0 + WIN.h;
-      grid(st.bot || [1, 1], lowB, lowT, false);
-      grid(st.top || [1, 1], upB, upT, head !== 'flat' && !st.sunburst);
-      if (head !== 'flat' && !st.sunburst) ms.push(muntin(xl, WIN.y0 + WIN.h, xr, WIN.y0 + WIN.h, z)); // spring line
-      if (st.sunburst) {
-        const T = WIN.y0 + WIN.h, r0 = 0.17, r1 = WIN.w / 2 - WIN.frame;
-        ms.push(muntin(xl, T, xr, T, z));
-        for (const a of [30, 60, 90, 120, 150]) { const k = a * Math.PI / 180; ms.push(muntin(cx + r0 * Math.cos(k), T + r0 * Math.sin(k), cx + r1 * Math.cos(k), T + r1 * Math.sin(k), z)); }
-        const ring = []; for (let i = 0; i <= 16; i++) { const k = i / 16 * Math.PI; ring.push([cx + (r0 + 0.014) * Math.cos(k), T + (r0 + 0.014) * Math.sin(k)]); }
-        for (let i = 16; i >= 0; i--) { const k = i / 16 * Math.PI; ring.push([cx + (r0 - 0.014) * Math.cos(k), T + (r0 - 0.014) * Math.sin(k)]); }
-        ms.push(slab(new THREE.Shape(ring.map(V2)), z - 0.015, 0.03, WHITE));
-      }
+      st.draw(P, f);
     }
-    // casing trim standing proud of the wall, plus sill and apron
-    const outer = winOutline(head, WIN.casing, 0, cx), inner = winOutline(head, 0, 0, cx);
-    ms.push(slab(new THREE.Shape(outer.concat(inner.slice().reverse()).map(V2)), front, 0.05, WHITE));
-    ms.push(boxMesh(WIN.w + 2 * WIN.casing + 0.12, 0.06, 0.24, cx, WIN.y0 - 0.06, front + 0.1));
-    ms.push(boxMesh(WIN.w + 2 * WIN.casing - 0.04, 0.14, 0.03, cx, WIN.y0 - 0.2, front + 0.015));
+    const outer = winOutline(G, CASING, 0, cx);
+    ms.push(slab(new THREE.Shape(outer.concat(open.slice().reverse()).map(V2)), front, 0.05, WHITE));
+    ms.push(boxMesh(G.w + 2 * CASING + 0.12, 0.06, 0.24, cx, G.y0 - 0.06, front + 0.1));
+    ms.push(boxMesh(G.w + 2 * CASING - 0.04, 0.14, 0.03, cx, G.y0 - 0.2, front + 0.015));
   }
   const wg = new THREE.ExtrudeGeometry(wall, {depth: t, bevelEnabled: false, curveSegments: 1}); wg.translate(0, 0, -t / 2);
   ms.unshift(new THREE.Mesh(wg, WHITE));
   const keys = [...rectKeys(L, t, H)];
-  for (const cx of centers) { const s = (WIN.w + 2 * WIN.casing + 0.12) / 2; keys.push(new V3(cx - s, WIN.y0 - 0.0, front + 0.22), new V3(cx + s, WIN.y0, front + 0.22)); }
+  for (const cx of centers) { const s = (G.w + 2 * CASING + 0.12) / 2; keys.push(new V3(cx - s, G.y0, front + 0.22), new V3(cx + s, G.y0, front + 0.22)); }
   return {g: finish(new THREE.Group(), ms), keys, extra: {winStyle: styleKey, winN: n, label: `Window wall · ${st.label}`}};
 }
+
+// ---------------------------------------------------------------- furniture
+function legBox(x, z, h, s = 0.045) { return boxMesh(s, h, s, x, 0, z); }
+function makeChair(kind) {
+  const ms = [], sh = 0.45, sw = 0.46, sd = 0.44;
+  const keys = [];
+  if (kind === 'stool') {
+    for (const [x, z] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) ms.push(legBox(x * 0.15, z * 0.15, 0.68));
+    ms.push(boxMesh(0.38, 0.04, 0.38, 0, 0.68, 0), boxMesh(0.34, 0.025, 0.025, 0, 0.25, -0.15), boxMesh(0.025, 0.025, 0.34, 0.15, 0.25, 0));
+    keys.push(...rectKeys(0.38, 0.38, 0.72));
+    return {ms, keys};
+  }
+  if (kind === 'bench') {
+    for (const x of [-0.65, 0.65]) ms.push(boxMesh(0.05, sh, 0.32, x, 0, 0));
+    ms.push(boxMesh(1.5, 0.05, 0.36, 0, sh, 0));
+    keys.push(...rectKeys(1.5, 0.36, sh + 0.05));
+    return {ms, keys};
+  }
+  for (const [x, z] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) ms.push(legBox(x * (sw / 2 - 0.03), z * (sd / 2 - 0.03), sh));
+  ms.push(boxMesh(sw, 0.04, sd, 0, sh, 0));
+  const bz = -sd / 2 + 0.02, top = kind === 'arm' ? 0.95 : 0.92;
+  for (const x of [-1, 1]) ms.push(boxMesh(0.045, top - sh, 0.045, x * (sw / 2 - 0.03), sh, bz));
+  if (kind === 'ladder') {
+    for (const y of [0.6, 0.72, 0.84]) ms.push(boxMesh(sw - 0.06, 0.05, 0.025, 0, y, bz));
+  } else {
+    ms.push(boxMesh(sw, 0.09, 0.03, 0, top - 0.09, bz));
+    for (const x of [-0.12, 0, 0.12]) ms.push(boxMesh(0.025, top - sh - 0.13, 0.02, x, sh + 0.04, bz));
+  }
+  if (kind === 'arm') for (const x of [-1, 1]) {
+    ms.push(boxMesh(0.04, 0.22, 0.04, x * (sw / 2 - 0.03), sh, sd / 2 - 0.06));
+    ms.push(boxMesh(0.06, 0.03, sd + 0.02, x * (sw / 2 - 0.01), sh + 0.22, 0));
+  }
+  keys.push(...rectKeys(sw, sd, sh + 0.04), new V3(-sw / 2, top, bz), new V3(sw / 2, top, bz));
+  return {ms, keys};
+}
+function makeTable(kind) {
+  const ms = [], h = 0.75, keys = [];
+  if (kind === 'round') {
+    const top = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 0.04, 48), WHITE); top.position.y = h - 0.02;
+    const col = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, h - 0.06, 20), WHITE); col.position.y = (h - 0.06) / 2 + 0.03;
+    const foot = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.27, 0.04, 36), WHITE); foot.position.y = 0.02;
+    ms.push(top, col, foot);
+    for (let i = 0; i < 24; i++) { const a = i / 24 * Math.PI * 2; keys.push(new V3(0.5 * Math.cos(a), h, 0.5 * Math.sin(a))); }
+    return {ms, keys, extra: {noEdges: true}};
+  }
+  const [W, D] = kind === 'dining' ? [1.6, 0.9] : kind === 'coffee' ? [1.1, 0.6] : [1.2, 0.6];
+  const H = kind === 'coffee' ? 0.42 : h;
+  ms.push(boxMesh(W, 0.04, D, 0, H - 0.04, 0));
+  if (kind === 'trestle') {
+    for (const x of [-1, 1]) { ms.push(boxMesh(0.06, H - 0.1, 0.06, x * (W / 2 - 0.15), 0.06, 0), boxMesh(0.08, 0.06, D - 0.1, x * (W / 2 - 0.15), 0, 0), boxMesh(0.08, 0.06, D - 0.2, x * (W / 2 - 0.15), H - 0.1, 0)); }
+    ms.push(boxMesh(W - 0.36, 0.06, 0.04, 0, 0.3, 0));
+  } else {
+    for (const [x, z] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) ms.push(legBox(x * (W / 2 - 0.05), z * (D / 2 - 0.05), H - 0.04, 0.05));
+    ms.push(boxMesh(W - 0.1, 0.08, 0.02, 0, H - 0.12, D / 2 - 0.05), boxMesh(W - 0.1, 0.08, 0.02, 0, H - 0.12, -D / 2 + 0.05));
+    if (kind === 'coffee') ms.push(boxMesh(W - 0.1, 0.025, D - 0.1, 0, 0.12, 0));
+  }
+  keys.push(...rectKeys(W, D, H));
+  return {ms, keys};
+}
+const furn = (fn, kind) => () => { const r = fn(kind); return {g: finish(new THREE.Group(), r.ms), keys: r.keys, extra: r.extra}; };
 
 const LIB = {
   cube: {label: 'Cube', make() { return {g: finish(new THREE.Group(), [boxMesh(2.6, 2.6, 2.6)]), keys: rectKeys(2.6, 2.6, 2.6)}; }},
@@ -485,6 +678,16 @@ const LIB = {
     for (const [x, z] of plan) ms.push(boxMesh(0.08, 1.3, 0.08, x * 0.98, 1.1, z * 0.98));
     return {g: finish(new THREE.Group(), ms),
       keys: [...rectKeys(5.2, 0.3, 3.6, 0, -0.15), ...roofPlan.map(([x, z]) => new V3(x, 2.8, z)), ...plan.map(([x, z]) => new V3(x, 0.6, z))]}; }},
+  chair: {label: 'Side chair', group: 'furniture', make: furn(makeChair, 'side')},
+  armchair: {label: 'Armchair', group: 'furniture', make: furn(makeChair, 'arm')},
+  ladder: {label: 'Ladder-back chair', group: 'furniture', make: furn(makeChair, 'ladder')},
+  stool: {label: 'Stool', group: 'furniture', make: furn(makeChair, 'stool')},
+  bench: {label: 'Bench', group: 'furniture', make: furn(makeChair, 'bench')},
+  dining: {label: 'Dining table', group: 'furniture', make: furn(makeTable, 'dining')},
+  roundtable: {label: 'Round table', group: 'furniture', make: furn(makeTable, 'round')},
+  desk: {label: 'Desk', group: 'furniture', make: furn(makeTable, 'desk')},
+  trestle: {label: 'Trestle table', group: 'furniture', make: furn(makeTable, 'trestle')},
+  coffee: {label: 'Coffee table', group: 'furniture', make: furn(makeTable, 'coffee')},
 };
 
 let forms = [], selected = null;
@@ -512,9 +715,10 @@ for (const [k, v] of Object.entries(LIB)) {
   b.innerHTML = '<span class="msi" aria-hidden="true">add</span>'; b.append(v.label);
   b.onclick = () => {
     const t = viewTarget();
-    addForm(k, t.x + (Math.random() - 0.5) * 3, t.z + (Math.random() - 0.5) * 3); dirty = true; drawPlan();
+    const r = v.group === 'furniture' ? 1.2 : 3;
+    addForm(k, t.x + (Math.random() - 0.5) * r, t.z + (Math.random() - 0.5) * r); if (forms.length === 1) fitView(); dirty = true; drawPlan();
   };
-  lib.appendChild(b);
+  (v.group === 'furniture' ? $('libFurn') : lib).appendChild(b);
 }
 
 // ---------------------------------------------------------------- state
@@ -870,7 +1074,11 @@ function rebuildWindows() {
   const g = addForm('windows', pos.x, pos.z, ry); g.scale.setScalar(sc); select(g); dirty = true;
 }
 const winSel = $('selWin');
-for (const [k, v] of Object.entries(WIN_STYLES)) { const o = document.createElement('option'); o.value = k; o.textContent = v.label; winSel.appendChild(o); }
+const groups = {};
+for (const [k, v] of Object.entries(WIN_STYLES)) {
+  if (!groups[v.group]) { groups[v.group] = document.createElement('optgroup'); groups[v.group].label = v.group; winSel.appendChild(groups[v.group]); }
+  const o = document.createElement('option'); o.value = k; o.textContent = v.label; groups[v.group].appendChild(o);
+}
 winSel.value = '6/1';
 winSel.addEventListener('change', rebuildWindows);
 $('selWinN').addEventListener('change', rebuildWindows);
@@ -893,6 +1101,22 @@ function setViewButtons(v, keepAz) {
   }
   syncSliders(); dirty = true;
 }
+function fitView() {
+  if (!forms.length) return;
+  const box = new THREE.Box3(); forms.forEach(g => box.expandByObject(g));
+  const size = box.getSize(new V3()), span = Math.max(size.x, size.z, size.y * 1.4);
+  target = viewTarget();
+  S.dist = Math.min(45, Math.max(2.5, span * 1.6 + 1.5));
+  S.eye = Math.min(S.eye, Math.max(0.8, size.y * 1.3 + 0.4));
+  S.pPos.y = Math.max(Math.min(S.pPos.y, span * 1.5 + 1), size.y + 0.6);
+  if (S.view !== 'free') { // lens shift so the forms sit near the middle of the frame
+    S.shift = 0; applyCamera();
+    const c = box.getCenter(new V3()).project(camera), yc = (1 - c.y) / 2;
+    S.shift = Math.max(-0.45, Math.min(0.45, 0.55 - yc));
+  }
+  syncSliders(); dirty = true;
+}
+$('bFit').onclick = fitView;
 $('v1').onclick = () => setViewButtons('1pt');
 $('v2').onclick = () => setViewButtons('2pt');
 $('v3').onclick = () => setViewButtons('free');
