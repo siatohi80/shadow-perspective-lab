@@ -81,7 +81,7 @@ body{margin:0;background:var(--md-surface);color:var(--md-on-surface);font:400 1
 .readout{position:absolute;left:12px;bottom:12px;right:12px;display:flex;flex-wrap:wrap;gap:8px;pointer-events:none}
 .badge{font:500 12px/16px var(--font);background:#dae2ff;color:#001946;border-radius:var(--r-s);padding:6px 10px}
 .badge.alt{background:#ffffffee;color:#44464f;border:1px solid #c5c6d0}
-.hint{position:absolute;right:12px;top:12px;font-size:12px;color:#44464f;background:#ffffffe6;padding:6px 10px;border-radius:var(--r-s);pointer-events:none;max-width:60%}
+.hint{position:absolute;right:12px;bottom:12px;font-size:12px;color:#44464f;background:#ffffffe6;padding:6px 10px;border-radius:var(--r-s);pointer-events:none;max-width:60%}
 .drop{position:absolute;inset:0;display:grid;place-items:center;background:rgba(47,91,183,.12);border:3px dashed #2f5bb7;border-radius:var(--r-l);color:#001946;font:500 18px var(--font);pointer-events:none}
 .sheet{min-width:0;overflow:auto;display:flex;flex-direction:column;gap:12px;padding-bottom:4px}
 .card{background:var(--md-surface-low);border-radius:var(--r-m);padding:16px;display:grid;gap:12px;border:1px solid var(--md-outline-variant)}
@@ -177,18 +177,18 @@ input.sw:focus-visible{outline:3px solid var(--md-primary);outline-offset:2px}
 .c-light label.sl input[type=range]::-moz-range-progress{background:var(--ray)}
 .c-light label.sl input[type=range]{accent-color:var(--ray)}
 .vsliders{background:transparent;padding:4px 0 2px}
-/* camera pie menu on the viewport */
-.pie{position:absolute;inset:0;z-index:5;background:rgba(15,20,30,.08);touch-action:none}
-.pie svg{position:absolute;width:300px;height:300px;transform:translate(-50%,-50%);overflow:visible;filter:drop-shadow(0 6px 18px rgba(0,0,0,.18))}
-.pie .wedge{cursor:ew-resize}
-.pie .wedge path.bg{fill:color-mix(in srgb,var(--md-surface) 90%,transparent);stroke:color-mix(in srgb,var(--md-on-surface) 10%,transparent);stroke-width:1}
-.pie .wedge:hover path.bg{fill:color-mix(in srgb,var(--md-secondary-container) 92%,transparent)}
-.pie .wedge.on path.bg{fill:var(--md-primary-container)}
-.pie text{font-family:var(--font);fill:var(--md-on-surface);pointer-events:none}
-.pie .val{font-family:var(--mono);font-size:12px;fill:var(--md-on-surface-variant)}
-.pie-fab{position:absolute;right:12px;bottom:12px;z-index:4;width:48px;height:48px;border-radius:16px;border:0;background:var(--md-primary-container);color:var(--md-on-primary-container);display:grid;place-items:center;cursor:pointer;box-shadow:var(--elev1)}
-.pie-fab .msi{font-size:24px;width:24px}
-.pie-fab:hover{filter:brightness(.97)}
+/* camera dial: a floating, see-through pie on the drawing + the same dial in the Perspective panel */
+.pie-float{position:absolute;z-index:4;width:176px;height:176px;border-radius:50%;opacity:.72;transition:opacity .15s;touch-action:none;-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
+.pie-float:hover,.pie-float.busy{opacity:.97}
+.pie-float svg,.pie-panel svg{width:100%;height:100%;overflow:visible;display:block}
+.pie-panel{width:236px;height:236px;margin:2px auto 0;touch-action:none}
+.dial .wedge{cursor:ew-resize}
+.dial .wedge path.bg{fill:color-mix(in srgb,var(--md-surface) 62%,transparent);stroke:color-mix(in srgb,var(--md-on-surface) 12%,transparent);stroke-width:1}
+.pie-panel .dial .wedge path.bg{fill:var(--md-surface)}
+.dial .wedge:hover path.bg{fill:color-mix(in srgb,var(--md-secondary-container) 90%,transparent)}
+.dial .wedge.on path.bg{fill:var(--md-primary-container)}
+.dial text{font-family:var(--font);fill:var(--md-on-surface);pointer-events:none}
+.dial .val{font-family:var(--mono);fill:var(--md-on-surface-variant)}
 .addrow{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:end}
 .selbox{display:grid;gap:10px;padding:12px;border-radius:var(--r-s);background:color-mix(in srgb,var(--md-surface) 70%,transparent)}
 .fields{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr);gap:10px}
@@ -255,8 +255,7 @@ label.chip:has(input:focus-visible){outline:3px solid var(--md-primary);outline-
   <div class="stage" id="stage">
     <canvas id="gl"></canvas>
     <canvas id="overlay"></canvas>
-    <button class="pie-fab" id="pieFab" title="Camera dial (or right-click the drawing)" aria-label="Open camera dial"><span class="msi" aria-hidden="true">tune</span></button>
-    <div class="pie" id="pie" hidden><svg id="pieSvg" viewBox="-130 -130 260 260" role="dialog" aria-label="Camera dial: drag a slice to change it"></svg></div>
+    <div class="pie-float" id="pieFloat" title="Camera dial: drag a slice to change it, drag the centre to move the dial"><svg id="pieSvg" viewBox="-130 -130 260 260" role="group" aria-label="Camera dial"></svg></div>
     <div class="hint" id="hint">Drag a form to move it · drag the glowing bulb to move the light · drag empty space to walk around</div>
     <div class="readout" id="readout"></div>
     <div class="drop" id="drop" hidden>Drop a .glb, .gltf, .obj or .stl file</div>
@@ -282,7 +281,8 @@ label.chip:has(input:focus-visible){outline:3px solid var(--md-primary);outline-
       <label class="vs" for="sTilt" id="lbTilt" hidden><output id="oTilt"></output><span class="vtrack"><input id="sTilt" type="range" min="-80" max="80" step="1" value="25"></span><span class="vl">Tilt</span></label>
       <label class="vs" for="sShift"><output id="oShift"></output><span class="vtrack"><input id="sShift" type="range" min="0.05" max="0.95" step="0.01" value="0.38"></span><span class="vl">Horizon</span></label>
       </div>
-      <div class="row"><button class="btn filled" id="bPie" title="Or right-click the drawing"><span class="msi" aria-hidden="true">tune</span>Camera dial</button><button class="btn tonal" id="bFit"><span class="msi" aria-hidden="true">fit_screen</span>Fit view to forms</button></div>
+      <div class="pie-panel"><svg id="piePanel" viewBox="-130 -130 260 260" role="group" aria-label="Camera dial"></svg></div>
+      <div class="row"><button class="btn tonal" id="bFit"><span class="msi" aria-hidden="true">fit_screen</span>Fit view to forms</button></div>
       
     </section>
 
@@ -1420,13 +1420,12 @@ glc.addEventListener('pointerup', () => {
 });
 controls.addEventListener('change', () => dirty = true);
 
-// ---------------------------------------------------------------- camera pie menu (viewport)
-// Right-click the drawing, long-press it, or use the dial button: a ring of slices opens at that spot.
-// Drag on a slice (any direction) or scroll over it to change that setting; the outer arc shows where it sits in its range.
-const pie = $('pie'), pieSvg = $('pieSvg');
+// ---------------------------------------------------------------- camera dial (pie)
+// Two copies of the same dial: one floating on the drawing (see-through, movable by its centre, top-right by
+// default) and one in the Perspective panel. Drag a slice in any direction (right/up = more) or scroll over it.
 const PIE_PARAMS = [
   {key: 'az', label: 'Angle', min: -89, max: 89, step: 0.4, fmt: v => Math.round(v) + '°', views: ['1pt', '2pt', '3pt']},
-  {key: 'eye', label: 'Eye height', min: 0.3, max: 40, log: true, fmt: v => v.toFixed(1) + ' m', views: ['1pt', '2pt', '3pt']},
+  {key: 'eye', label: 'Eye', min: 0.3, max: 40, log: true, fmt: v => v.toFixed(1) + ' m', views: ['1pt', '2pt', '3pt']},
   {key: 'dist', label: 'Distance', min: 2, max: 200, log: true, fmt: v => v.toFixed(1) + ' m', views: ['1pt', '2pt', '3pt']},
   {key: 'lens', label: 'Lens', min: 8, max: 300, log: true, fmt: v => Math.round(v) + ' mm', views: ['1pt', '2pt', '3pt', 'free']},
   {key: 'tilt', label: 'Tilt', min: -80, max: 80, step: 0.4, fmt: v => Math.round(v) + '°', views: ['3pt']},
@@ -1439,84 +1438,94 @@ function pset(k, v) {
   syncSliders(); dirty = true;
 }
 const norm = (P, v) => P.log ? Math.log(v / P.min) / Math.log(P.max / P.min) : (v - P.min) / (P.max - P.min);
-function nudge(P, px) {   // px of drag -> new value (log params move by ratio)
+function nudge(P, px) {
   const v = pget(P.key);
-  let nv = P.log ? v * Math.pow(P.max / P.min, px / 420) : v + px * P.step;
+  const nv = P.log ? v * Math.pow(P.max / P.min, px / 420) : v + px * P.step;
   pset(P.key, Math.min(P.max, Math.max(P.min, nv)));
 }
-let pieAt = {x: 0, y: 0}, pieDrag = null;
-const R0 = 46, R1 = 124;
+const R0 = 44, R1 = 126;
 function arcPath(r0, r1, a0, a1) {
   const p = (r, a) => `${(r * Math.cos(a)).toFixed(2)} ${(r * Math.sin(a)).toFixed(2)}`, big = a1 - a0 > Math.PI ? 1 : 0;
   return `M${p(r1, a0)} A${r1} ${r1} 0 ${big} 1 ${p(r1, a1)} L${p(r0, a1)} A${r0} ${r0} 0 ${big} 0 ${p(r0, a0)} Z`;
 }
-function drawPie() {
-  if (pie.hidden) return;
-  pieSvg.innerHTML = '';
-  const list = PIE_PARAMS.filter(P => P.views.includes(S.view));
-  const n = list.length, span = Math.PI * 2 / n, gap = 0.025;
-  list.forEach((P, i) => {
-    const a0 = -Math.PI / 2 - span / 2 + i * span + gap, a1 = a0 + span - 2 * gap, am = (a0 + a1) / 2;
-    const g = el('g', {class: 'wedge' + (pieDrag && pieDrag.P === P ? ' on' : ''), 'data-k': P.key}, pieSvg);
-    el('path', {class: 'bg', d: arcPath(R0, R1, a0, a1)}, g);
-    // range gauge along the outer edge
-    const ga0 = a0 + 0.06, ga1 = a1 - 0.06, f = Math.min(1, Math.max(0, norm(P, pget(P.key))));
-    el('path', {d: arcPath(R1 - 7, R1 - 4, ga0, ga1), fill: 'color-mix(in srgb, var(--md-on-surface) 12%, transparent)'}, g);
-    el('path', {d: arcPath(R1 - 7, R1 - 4, ga0, ga0 + (ga1 - ga0) * Math.max(0.002, f)), fill: 'var(--md-primary)'}, g);
-    const tx = Math.cos(am) * 84, ty = Math.sin(am) * 84;
-    el('text', {x: tx, y: ty - 3, 'text-anchor': 'middle', 'font-size': 13, 'font-weight': 500}, g).textContent = P.label;
-    el('text', {class: 'val', x: tx, y: ty + 14, 'text-anchor': 'middle'}, g).textContent = P.fmt(pget(P.key));
+const dials = [];
+let pieDrag = null;
+const pieFloat = $('pieFloat');
+function makeDial(svg, movable) {
+  svg.classList.add('dial');
+  const d = {svg, movable};
+  d.draw = () => {
+    svg.innerHTML = '';
+    const list = PIE_PARAMS.filter(P => P.views.includes(S.view));
+    const n = list.length, span = Math.PI * 2 / n, gap = 0.03;
+    list.forEach((P, i) => {
+      const a0 = -Math.PI / 2 - span / 2 + i * span + gap, a1 = a0 + span - 2 * gap, am = (a0 + a1) / 2;
+      const g = el('g', {class: 'wedge' + (pieDrag && pieDrag.P === P ? ' on' : ''), 'data-k': P.key}, svg);
+      el('path', {class: 'bg', d: arcPath(R0, R1, a0, a1)}, g);
+      const ga0 = a0 + 0.07, ga1 = a1 - 0.07, f = Math.min(1, Math.max(0, norm(P, pget(P.key))));
+      el('path', {d: arcPath(R1 - 8, R1 - 4, ga0, ga1), fill: 'color-mix(in srgb, var(--md-on-surface) 14%, transparent)'}, g);
+      el('path', {d: arcPath(R1 - 8, R1 - 4, ga0, ga0 + (ga1 - ga0) * Math.max(0.002, f)), fill: 'var(--md-primary)'}, g);
+      const tx = Math.cos(am) * 84, ty = Math.sin(am) * 84;
+      el('text', {x: tx, y: ty - 4, 'text-anchor': 'middle', 'font-size': 18, 'font-weight': 600}, g).textContent = P.label;
+      el('text', {class: 'val', x: tx, y: ty + 17, 'text-anchor': 'middle', 'font-size': 16}, g).textContent = P.fmt(pget(P.key));
+    });
+    const live = pieDrag && pieDrag.P && pieDrag.dial === d;
+    const hub = el('g', {'data-hub': '1', style: movable ? 'cursor:move' : ''}, svg);
+    el('circle', {cx: 0, cy: 0, r: R0 - 5, fill: live ? 'var(--md-primary)' : 'color-mix(in srgb, var(--md-surface) 75%, transparent)', stroke: 'color-mix(in srgb, var(--md-on-surface) 12%, transparent)', 'data-hub': '1'}, hub);
+    if (live) {
+      el('text', {x: 0, y: 7, 'text-anchor': 'middle', 'font-size': 16, 'font-weight': 700, style: 'fill:var(--md-on-primary);font-family:var(--mono)'}, hub).textContent = pieDrag.P.fmt(pget(pieDrag.P.key));
+    } else if (movable) {   // four-way arrows: drag here to move the dial
+      el('path', {d: 'M0 -15V15M-15 0H15M0 -15l-5 5M0 -15l5 5M0 15l-5 -5M0 15l5 -5M-15 0l5 -5M-15 0l5 5M15 0l-5 -5M15 0l-5 5', stroke: 'var(--md-on-surface-variant)', 'stroke-width': 2.4, 'stroke-linecap': 'round', fill: 'none', 'data-hub': '1'}, hub);
+    } else {
+      el('text', {x: 0, y: 6, 'text-anchor': 'middle', 'font-size': 15, 'font-weight': 600, style: 'fill:var(--md-on-surface-variant)'}, hub).textContent = {'1pt': '1-pt', '2pt': '2-pt', '3pt': '3-pt', free: 'Free'}[S.view];
+    }
+  };
+  svg.addEventListener('pointerdown', e => {
+    const w = e.target.closest && e.target.closest('.wedge');
+    if (w) pieDrag = {P: PIE_PARAMS.find(q => q.key === w.getAttribute('data-k')), dial: d, x: e.clientX, y: e.clientY};
+    else if (movable && e.target.closest && e.target.closest('[data-hub]')) {
+      const box = pieFloat.getBoundingClientRect();
+      pieDrag = {move: true, dial: d, ox: e.clientX - box.left, oy: e.clientY - box.top};
+    } else return;
+    e.preventDefault(); e.stopPropagation();
+    svg.setPointerCapture(e.pointerId); pieFloat.classList.add('busy'); drawDials();
   });
-  // centre: close button, or a big readout while dragging
-  const c = el('g', {'data-close': '1', style: 'cursor:pointer'}, pieSvg);
-  el('circle', {cx: 0, cy: 0, r: R0 - 6, fill: pieDrag ? 'var(--md-primary)' : 'color-mix(in srgb, var(--md-surface) 92%, transparent)', stroke: 'color-mix(in srgb, var(--md-on-surface) 10%, transparent)', 'data-close': '1'}, c);
-  if (pieDrag) {
-    el('text', {x: 0, y: -2, 'text-anchor': 'middle', 'font-size': 11, style: 'fill:var(--md-on-primary)'}, c).textContent = pieDrag.P.label;
-    el('text', {x: 0, y: 15, 'text-anchor': 'middle', 'font-size': 13, 'font-weight': 600, style: 'fill:var(--md-on-primary);font-family:var(--mono)'}, c).textContent = pieDrag.P.fmt(pget(pieDrag.P.key));
-  } else {
-    el('path', {d: 'M-8 -8L8 8M8 -8L-8 8', stroke: 'var(--md-on-surface-variant)', 'stroke-width': 2.4, 'stroke-linecap': 'round', 'data-close': '1'}, c);
-  }
+  svg.addEventListener('pointermove', e => {
+    if (!pieDrag || pieDrag.dial !== d) return;
+    if (pieDrag.move) { placeFloat(e.clientX - pieDrag.ox, e.clientY - pieDrag.oy, true); return; }
+    const px = (e.clientX - pieDrag.x) - (e.clientY - pieDrag.y);
+    pieDrag.x = e.clientX; pieDrag.y = e.clientY;
+    nudge(pieDrag.P, px); drawDials();
+  });
+  const end = () => { if (pieDrag && pieDrag.dial === d) { if (pieDrag.move) saveFloat(); pieDrag = null; pieFloat.classList.remove('busy'); drawDials(); } };
+  svg.addEventListener('pointerup', end); svg.addEventListener('pointercancel', end);
+  svg.addEventListener('wheel', e => {
+    const w = e.target.closest && e.target.closest('.wedge'); if (!w) return;
+    e.preventDefault(); nudge(PIE_PARAMS.find(q => q.key === w.getAttribute('data-k')), -e.deltaY * 0.25); drawDials();
+  }, {passive: false});
+  dials.push(d); return d;
 }
-function openPie(x, y) {
-  const W = stage.clientWidth, H = stage.clientHeight, m = 150;
-  pieAt = {x: Math.min(W - m + 10, Math.max(m - 10, x)), y: Math.min(H - m + 10, Math.max(m - 10, y))};
-  pieSvg.style.left = pieAt.x + 'px'; pieSvg.style.top = pieAt.y + 'px';
-  pie.hidden = false; drawPie();
+function drawDials() { dials.forEach(d => d.draw()); }
+// floating dial position, kept as fractions of the drawing so it survives resizing (remembered per browser)
+let floatPos = null;
+try { floatPos = JSON.parse(localStorage.getItem('shadowlab.dial')); } catch (e) {}
+function placeFloat(x, y, fromPointer) {
+  const r = stage.getBoundingClientRect(), w = pieFloat.offsetWidth, m = 8;
+  if (fromPointer) { x -= r.left; y -= r.top; }
+  x = Math.min(r.width - w - m, Math.max(m, x)); y = Math.min(r.height - w - m, Math.max(m, y));
+  pieFloat.style.left = x + 'px'; pieFloat.style.top = y + 'px';
+  floatPos = {fx: (x - m) / Math.max(1, r.width - w - 2 * m), fy: (y - m) / Math.max(1, r.height - w - 2 * m)};
 }
-function closePie() { pie.hidden = true; pieDrag = null; }
-glc.addEventListener('contextmenu', e => { e.preventDefault(); const r = stage.getBoundingClientRect(); openPie(e.clientX - r.left, e.clientY - r.top); });
-let lpTimer = null;   // long-press (touch) opens the pie too
-glc.addEventListener('pointerdown', e => {
-  if (e.pointerType !== 'touch') return;
-  const r = stage.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top;
-  clearTimeout(lpTimer); lpTimer = setTimeout(() => { drag = null; openPie(x, y); }, 550);
-});
-['pointerup', 'pointercancel'].forEach(t => glc.addEventListener(t, () => clearTimeout(lpTimer)));
-glc.addEventListener('pointermove', e => { if (e.pointerType === 'touch' && (Math.abs(e.movementX) + Math.abs(e.movementY) > 3)) clearTimeout(lpTimer); });
-$('pieFab').onclick = () => pie.hidden ? openPie(stage.clientWidth / 2, stage.clientHeight / 2) : closePie();
-$('bPie').onclick = () => openPie(stage.clientWidth / 2, stage.clientHeight / 2);
-pie.addEventListener('contextmenu', e => { e.preventDefault(); closePie(); });
-pie.addEventListener('pointerdown', e => {
-  const t = e.target, w = t.closest && t.closest('.wedge');
-  if (w) {
-    const P = PIE_PARAMS.find(q => q.key === w.getAttribute('data-k'));
-    pieDrag = {P, x: e.clientX, y: e.clientY}; pie.setPointerCapture(e.pointerId); drawPie(); return;
-  }
-  if (t.closest && t.closest('[data-close]')) { closePie(); return; }
-  if (t === pie) closePie();   // click on the backdrop
-});
-pie.addEventListener('pointermove', e => {
-  if (!pieDrag) return;
-  const px = (e.clientX - pieDrag.x) - (e.clientY - pieDrag.y);   // right or up = more
-  pieDrag.x = e.clientX; pieDrag.y = e.clientY;
-  nudge(pieDrag.P, px); drawPie();
-});
-pie.addEventListener('pointerup', () => { if (pieDrag) { pieDrag = null; drawPie(); } });
-pie.addEventListener('wheel', e => {
-  const w = e.target.closest && e.target.closest('.wedge'); if (!w) return;
-  e.preventDefault(); nudge(PIE_PARAMS.find(q => q.key === w.getAttribute('data-k')), -e.deltaY * 0.25); drawPie();
-}, {passive: false});
-document.addEventListener('keydown', e => { if (e.key === 'Escape' && !pie.hidden) closePie(); });
+function saveFloat() { try { localStorage.setItem('shadowlab.dial', JSON.stringify(floatPos)); } catch (e) {} }
+function layoutFloat() {   // default: north-east corner
+  const r = stage.getBoundingClientRect(), w = pieFloat.offsetWidth, m = 8, p = floatPos || {fx: 1, fy: 0};
+  placeFloat(m + p.fx * Math.max(1, r.width - w - 2 * m), m + p.fy * Math.max(1, r.height - w - 2 * m), false);
+}
+new ResizeObserver(layoutFloat).observe(stage);
+makeDial($('pieSvg'), true);
+makeDial($('piePanel'), false);
+// right-click the drawing: bring the dial to the pointer
+glc.addEventListener('contextmenu', e => { e.preventDefault(); const w = pieFloat.offsetWidth; placeFloat(e.clientX - w / 2, e.clientY - w / 2, true); saveFloat(); });
 
 
 // ---------------------------------------------------------------- UI wiring
@@ -1576,7 +1585,7 @@ function setViewButtons(v, keepAz) {
     controls.enabled = false;
     $('hint').textContent = 'Drag a form to move it · drag the glowing bulb to move the light · drag empty space to walk around';
   }
-  syncSliders(); dirty = true; if (typeof drawPie === 'function') drawPie();
+  syncSliders(); dirty = true; if (typeof drawDials === 'function') drawDials();
 }
 function fitView() {
   if (!forms.length) return;
@@ -1889,7 +1898,7 @@ function frame() {
   drawPlan();
   drawGizmos();
   fancies.forEach(f => f.update());
-  drawPie();
+  drawDials();
 }
 
 ['selForm', 'selWin', 'selWinN'].forEach(id => enhanceSelect($(id)));
