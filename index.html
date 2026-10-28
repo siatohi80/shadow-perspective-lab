@@ -133,8 +133,9 @@ input.sw:focus-visible{outline:3px solid var(--md-primary);outline-offset:2px}
 .menu .mix{background:conic-gradient(#f2b5ae,#f6cf9f,#f1e19c,#c5dfa9,#a6d6c8,#aac6e6,#c6b6e4,#e8b4cf,#f2b5ae)}
 .gizmos{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .giz{margin:0;display:grid;justify-items:center;gap:4px;background:var(--md-surface);border-radius:var(--r-m);padding:10px 6px 8px}
-.giz.one{padding:12px 6px 10px}
-.giz.one svg{width:168px;height:168px}
+.giz.one{grid-template-columns:auto 1fr;justify-items:start;align-items:center;gap:12px;padding:6px 10px}
+.giz.one svg{width:92px;height:92px}
+.giz.one figcaption{text-align:left}
 .giz .gh{font-size:11px;color:var(--md-on-surface-variant);opacity:.85}
 .giz figcaption{text-align:center;line-height:1.5}
 .giz svg{width:112px;height:112px;touch-action:none;cursor:grab;border-radius:50%}
@@ -2085,9 +2086,14 @@ $('bShot').onclick = () => {
   x.fillStyle = '#fbfbf8'; x.fillRect(0, 0, c.width, c.height);
   x.drawImage(glc, 0, 0, c.width, c.height); x.drawImage(ov, 0, 0);
   const d = new Date(), p = n => String(n).padStart(2, '0');
-  const a = document.createElement('a');
-  a.download = `shadow-lab-${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}.png`;
-  a.href = c.toDataURL('image/png'); document.body.appendChild(a); a.click(); a.remove();
+  const name = `shadow-lab-${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}.png`;
+  c.toBlob(async blob => {
+    // inside claude.ai the viewer saves through the downloads capability; elsewhere (GitHub Pages) a plain download link
+    const dl = window.claude && window.claude.use ? await window.claude.use('downloads').catch(() => null) : null;
+    if (dl) { try { await dl.save({filename: name, data: blob}); } catch (err) { /* declined or unavailable */ } return; }
+    const a = document.createElement('a'); a.download = name; a.href = URL.createObjectURL(blob);
+    document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+  }, 'image/png');
 };
 fileIn.addEventListener('change', () => { if (fileIn.files.length) importFiles(fileIn.files); fileIn.value = ''; });
 let dragDepth = 0;
