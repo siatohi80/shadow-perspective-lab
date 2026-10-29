@@ -255,7 +255,10 @@ label.chip:has(input:focus-visible){outline:3px solid var(--md-primary);outline-
 .row{display:flex;flex-wrap:wrap;gap:8px}
 .camrow{display:grid;grid-template-columns:1fr 1fr;align-items:center;background:var(--md-surface);border-radius:var(--r-m);padding:4px}
 .camrow .tg.tg-inline{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 10px;font-size:13px;min-width:0}
-.camrow .tg.tg-inline + .tg.tg-inline{border-left:1px solid var(--md-outline-variant);border-radius:0}
+.camrow{position:relative;border-radius:var(--r-l)}
+.camrow .tg.tg-inline{border-radius:calc(var(--r-l) - 4px)}
+.camrow::after{content:"";position:absolute;left:50%;top:10px;bottom:10px;width:2px;margin-left:-1px;border-radius:1px;background:var(--md-outline-variant)}
+.fitbtn{width:100%;justify-content:center}
 .h2btn{margin-left:auto;padding:0;width:36px;height:36px;justify-content:center;font-size:14px}
 .camrow .tg.tg-inline span{white-space:nowrap}
 .btn:disabled{opacity:.45;cursor:default;pointer-events:none}
@@ -298,7 +301,7 @@ label.chip:has(input:focus-visible){outline:3px solid var(--md-primary);outline-
   <aside class="sheet">
 
     <section class="card c-view" aria-labelledby="h-view">
-      <h2 id="h-view"><span class="msi" aria-hidden="true">visibility</span>Perspective<button class="btn tonal icon h2btn" id="bFit" title="Fit view to the forms" aria-label="Fit view"><span class="msi" aria-hidden="true">fit_screen</span></button></h2>
+      <h2 id="h-view"><span class="msi" aria-hidden="true">visibility</span>Perspective</h2>
       <div class="seg" role="group" aria-label="Perspective type">
         <button id="v1" aria-pressed="false"><span class="msi chk">check</span>1-pt</button>
         <button id="v2" aria-pressed="true"><span class="msi chk">check</span>2-pt</button>
@@ -314,6 +317,7 @@ label.chip:has(input:focus-visible){outline:3px solid var(--md-primary);outline-
       <label class="vs" for="sShift"><output id="oShift"></output><span class="vtrack"><input id="sShift" type="range" min="0.05" max="0.95" step="0.01" value="0.38"></span><span class="vl">Horizon</span></label>
       </div>
       <div class="camrow"><label class="tg tg-inline" for="cDial"><span>Camera dial</span><input type="checkbox" class="sw" id="cDial" checked></label><label class="tg tg-inline" for="cXf"><span>Form dial</span><input type="checkbox" class="sw" id="cXf" checked></label></div>
+      <button class="btn tonal fitbtn" id="bFit" title="Fit view to the forms"><span class="msi" aria-hidden="true">fit_screen</span>Fit view</button>
       
     </section>
 
