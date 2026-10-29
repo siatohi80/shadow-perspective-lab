@@ -2025,12 +2025,12 @@ function wrapModel(obj, name, zUp) {
   obj.traverse(o => { if (o.isMesh) meshes.push(o); });
   for (const o of meshes) {
     o.castShadow = true; o.receiveShadow = true;
-    if (clay) o.material = WHITE;
-    else {
-      o.userData.ownMat = true;
-      const ms = Array.isArray(o.material) ? o.material : [o.material];
-      ms.forEach(m => { if (m) m.side = THREE.FrontSide; });
-    }
+    if (!o.geometry.attributes.normal) o.geometry.computeVertexNormals();   // files without normals would shade black
+    const ms = Array.isArray(o.material) ? o.material : [o.material];
+    // no environment map in this scene: fully metallic glTF materials would render black, so tone metalness down
+    ms.forEach(m => { if (!m) return; m.side = THREE.FrontSide; if (m.isMeshStandardMaterial && !m.envMap) { m.metalness = Math.min(m.metalness, 0.25); m.roughness = Math.max(m.roughness, 0.6); } });
+    o.userData.origMat = o.material;               // kept so the "Keep model's colours" switch can flip back and forth
+    if (clay) o.material = WHITE; else o.userData.ownMat = true;
     if (tris < 250000) {
       const e = new THREE.LineSegments(new THREE.EdgesGeometry(o.geometry, 35), EDGE);
       o.add(e);
@@ -2058,6 +2058,19 @@ function wrapModel(obj, name, zUp) {
   dirty = true;
   snack(`Imported ${name}` + (k !== 1 ? ` (rescaled to ${box.max.y.toFixed(1)} m tall)` : '') + (tris >= 250000 ? ' · outlines skipped for a heavy mesh' : ''));
 }
+// "Keep model's colours" applies to every imported model, live
+function setKeepColours(on) {
+  forms.filter(g => g.userData.type === 'model').forEach(g => {
+    g.traverse(o => {
+      if (!o.isMesh || !o.userData.origMat) return;
+      o.userData.ownMat = on;
+      o.material = on ? o.userData.origMat : WHITE;
+    });
+    if (!on) paint(g, g.userData.color ?? null);
+  });
+  dirty = true;
+}
+$('cKeep').addEventListener('change', e => setKeepColours(e.target.checked));
 function refreshKeys(g) { // after "stand upright" recompute box + keys
   const inner = g.children[0];
   g.updateMatrixWorld(true);
