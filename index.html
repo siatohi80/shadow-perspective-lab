@@ -253,9 +253,10 @@ label.chip:has(input:focus-visible){outline:3px solid var(--md-primary);outline-
 .note{font-size:12px;line-height:16px;color:var(--md-on-surface-variant);margin:0}
 .sel{font:500 12px var(--mono);color:var(--md-on-surface-variant)}
 .row{display:flex;flex-wrap:wrap;gap:8px}
-.camrow{display:flex;align-items:center;gap:8px;background:var(--md-surface);border-radius:var(--r-m);padding:4px 4px 4px 0}
-.camrow .tg.tg-inline{flex:1 1 auto;padding:8px 8px;gap:6px;font-size:13px}
-.camrow .btn.icon{padding:0;width:40px;justify-content:center;flex:none}
+.camrow{display:grid;grid-template-columns:1fr 1fr;align-items:center;background:var(--md-surface);border-radius:var(--r-m);padding:4px}
+.camrow .tg.tg-inline{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 10px;font-size:13px;min-width:0}
+.camrow .tg.tg-inline + .tg.tg-inline{border-left:1px solid var(--md-outline-variant);border-radius:0}
+.h2btn{margin-left:auto;padding:0;width:36px;height:36px;justify-content:center;font-size:14px}
 .camrow .tg.tg-inline span{white-space:nowrap}
 .btn:disabled{opacity:.45;cursor:default;pointer-events:none}
 .snack{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--md-on-surface);color:var(--md-surface);padding:14px 16px;border-radius:4px;font-size:14px;box-shadow:var(--elev1);max-width:min(560px,calc(100% - 32px));z-index:20}
@@ -297,7 +298,7 @@ label.chip:has(input:focus-visible){outline:3px solid var(--md-primary);outline-
   <aside class="sheet">
 
     <section class="card c-view" aria-labelledby="h-view">
-      <h2 id="h-view"><span class="msi" aria-hidden="true">visibility</span>Perspective</h2>
+      <h2 id="h-view"><span class="msi" aria-hidden="true">visibility</span>Perspective<button class="btn tonal icon h2btn" id="bFit" title="Fit view to the forms" aria-label="Fit view"><span class="msi" aria-hidden="true">fit_screen</span></button></h2>
       <div class="seg" role="group" aria-label="Perspective type">
         <button id="v1" aria-pressed="false"><span class="msi chk">check</span>1-pt</button>
         <button id="v2" aria-pressed="true"><span class="msi chk">check</span>2-pt</button>
@@ -312,8 +313,7 @@ label.chip:has(input:focus-visible){outline:3px solid var(--md-primary);outline-
       <label class="vs" for="sTilt" id="lbTilt" hidden><output id="oTilt"></output><span class="vtrack"><input id="sTilt" type="range" min="-85" max="85" step="1" value="25"></span><span class="vl">Tilt</span></label>
       <label class="vs" for="sShift"><output id="oShift"></output><span class="vtrack"><input id="sShift" type="range" min="0.05" max="0.95" step="0.01" value="0.38"></span><span class="vl">Horizon</span></label>
       </div>
-      <div class="camrow"><label class="tg tg-inline" for="cDial"><span>Camera dial</span><input type="checkbox" class="sw" id="cDial" checked></label><label class="tg tg-inline" for="cXf"><span>Form dial</span><input type="checkbox" class="sw" id="cXf" checked></label>
-        <button class="btn tonal icon" id="bFit" title="Fit view to the forms" aria-label="Fit view"><span class="msi" aria-hidden="true">fit_screen</span></button></div>
+      <div class="camrow"><label class="tg tg-inline" for="cDial"><span>Camera dial</span><input type="checkbox" class="sw" id="cDial" checked></label><label class="tg tg-inline" for="cXf"><span>Form dial</span><input type="checkbox" class="sw" id="cXf" checked></label></div>
       
     </section>
 
